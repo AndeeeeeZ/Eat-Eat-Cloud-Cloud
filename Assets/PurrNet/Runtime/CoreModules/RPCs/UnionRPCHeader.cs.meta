@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: b5fab628ce29479a90ca2a9276261637
+timeCreated: 1767701135
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/RPCs/UnionRPCHeader.cs
+  uploadId: 962248

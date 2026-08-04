@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: b057ebddd34e4a46aa28ebbea2bb8779
+timeCreated: 1776299184
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Components/NetworkModule/SyncLazyRef.cs
+  uploadId: 962248

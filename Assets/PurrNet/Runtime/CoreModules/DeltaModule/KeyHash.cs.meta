@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: d91e9c2e4eda4a16b5de366e18b5ef5a
+timeCreated: 1768896454
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/DeltaModule/KeyHash.cs
+  uploadId: 962248

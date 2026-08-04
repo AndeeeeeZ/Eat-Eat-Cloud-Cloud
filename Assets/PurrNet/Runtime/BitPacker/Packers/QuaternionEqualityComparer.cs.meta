@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 0b8d5049aa204b8ea73327acb45264e0
+timeCreated: 1768759621
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/Packers/QuaternionEqualityComparer.cs
+  uploadId: 962248

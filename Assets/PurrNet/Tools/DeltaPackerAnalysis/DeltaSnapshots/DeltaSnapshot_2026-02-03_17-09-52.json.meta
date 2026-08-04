@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 22530c68d910e4a4bbb56d0ff323675e
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Tools/DeltaPackerAnalysis/DeltaSnapshots/DeltaSnapshot_2026-02-03_17-09-52.json
+  uploadId: 962248

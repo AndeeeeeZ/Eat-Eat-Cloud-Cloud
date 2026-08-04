@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 19ec07396cc04ae18264caeef1903752
+timeCreated: 1734276652
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/OverrideDeleteBehaviour/PurrDeleteHandler.cs
+  uploadId: 962248

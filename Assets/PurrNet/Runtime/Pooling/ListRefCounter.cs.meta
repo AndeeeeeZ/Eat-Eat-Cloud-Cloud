@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 27b17fbb42893a1419f65f0518df3d60
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Pooling/ListRefCounter.cs
+  uploadId: 962248

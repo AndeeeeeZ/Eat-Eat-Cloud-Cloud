@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 02a820189ef2d55439cc132ff3f4b917
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Components/NetworkBehaviour/NetworkTransformState.cs
+  uploadId: 962248

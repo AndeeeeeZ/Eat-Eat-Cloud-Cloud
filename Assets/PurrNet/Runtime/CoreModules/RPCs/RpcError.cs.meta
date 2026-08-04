@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 4b981fa93381c5246b502ff2ccac8c29
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/RPCs/RpcError.cs
+  uploadId: 962248

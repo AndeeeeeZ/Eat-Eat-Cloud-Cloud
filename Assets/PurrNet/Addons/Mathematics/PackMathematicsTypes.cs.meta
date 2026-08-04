@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: b440232af48739241a80f451124f3bec
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Addons/Mathematics/PackMathematicsTypes.cs
+  uploadId: 962248

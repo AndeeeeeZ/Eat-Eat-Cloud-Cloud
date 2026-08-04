@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: f84bbc6055094badb4560d42e3baa6a9
+timeCreated: 1777576328
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Manifest/RPCManifestEntry.cs
+  uploadId: 962248

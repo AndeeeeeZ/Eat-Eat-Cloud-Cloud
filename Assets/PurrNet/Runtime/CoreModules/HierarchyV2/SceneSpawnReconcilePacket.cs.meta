@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: c88afe0062ed46ae93a2b2bc85a6dcf7
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/HierarchyV2/SceneSpawnReconcilePacket.cs
+  uploadId: 962248

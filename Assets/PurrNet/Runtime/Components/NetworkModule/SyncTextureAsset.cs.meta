@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 3ddcda5c3bc74ed0857bcd61c164d914
+timeCreated: 1763591322
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Components/NetworkModule/SyncTextureAsset.cs
+  uploadId: 962248

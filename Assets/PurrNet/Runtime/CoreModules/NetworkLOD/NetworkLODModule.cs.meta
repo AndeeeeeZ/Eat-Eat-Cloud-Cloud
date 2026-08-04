@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f71f3cc2bbf145708fca3130cbf6d51f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/NetworkLOD/NetworkLODModule.cs
+  uploadId: 962248

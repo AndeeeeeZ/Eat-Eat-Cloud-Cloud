@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: f9c2e8127f0c7c04cac442aa86f62430
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/NetworkReflectionPrefabCache.cs
+  uploadId: 962248

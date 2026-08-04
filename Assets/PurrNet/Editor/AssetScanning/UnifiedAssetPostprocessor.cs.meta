@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 3add53e1cb5e1244ab586176bc8b3bdd
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/AssetScanning/UnifiedAssetPostprocessor.cs
+  uploadId: 962248

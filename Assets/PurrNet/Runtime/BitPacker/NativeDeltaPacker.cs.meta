@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: b8f7965d310f4e5f9ba7046b79222635
+timeCreated: 1770336513
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/NativeDeltaPacker.cs
+  uploadId: 962248

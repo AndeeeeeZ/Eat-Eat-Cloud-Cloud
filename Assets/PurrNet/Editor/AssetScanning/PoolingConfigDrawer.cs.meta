@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 3670a47204d296a4a8e2713b59974487
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/AssetScanning/PoolingConfigDrawer.cs
+  uploadId: 962248

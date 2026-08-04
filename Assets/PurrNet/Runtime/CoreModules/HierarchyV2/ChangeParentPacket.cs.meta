@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 777cf711154448289448c09ac687dda1
+timeCreated: 1735603649
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/HierarchyV2/ChangeParentPacket.cs
+  uploadId: 962248

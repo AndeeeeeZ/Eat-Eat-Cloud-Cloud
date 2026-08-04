@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 35d74003d0acc744d91c5db5e93e4d36
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/TELEMETRY.md
+  uploadId: 962248

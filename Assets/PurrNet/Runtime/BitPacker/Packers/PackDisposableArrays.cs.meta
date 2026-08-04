@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 05ac5e0e00174021839ac45e6db08268
+timeCreated: 1759914936
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/Packers/PackDisposableArrays.cs
+  uploadId: 962248

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 598595441caba7a429e1d7cac777609b
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Tools/DeltaPackerAnalysis/Editor/PurrNet.DeltaPackerAnalysis.Editor.asmdef
+  uploadId: 962248

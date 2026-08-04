@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 7c9d2e3f4a5b6c7d8e9f0a1b2c3d4e5f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Codegen/BakePurrVersion.cs
+  uploadId: 962248

@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 3a2e803a8119490ea14ace40972a424a
+timeCreated: 1776299107
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Components/NetworkIdentity/GlobalNetworkID.cs
+  uploadId: 962248

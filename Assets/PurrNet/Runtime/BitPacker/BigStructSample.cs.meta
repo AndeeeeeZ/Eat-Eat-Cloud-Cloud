@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 27f876529a0c2654182d2b939a2d7c7b
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/BigStructSample.cs
+  uploadId: 962248

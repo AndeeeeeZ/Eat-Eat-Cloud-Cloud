@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 65175d529bc3bb64882f9b50e0d0797c
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/AddressableNetworkPrefabsEditor.cs
+  uploadId: 962248

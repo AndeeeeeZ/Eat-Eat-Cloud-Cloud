@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: a46130544fe4449d84a3c3a43d4f072c
+timeCreated: 1767366968
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/Packers/HashsetComparator.cs
+  uploadId: 962248

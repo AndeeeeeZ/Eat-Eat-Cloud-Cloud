@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 420ff0adbb8e569439f4c0cce2ab8078
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Telemetry/PurrInternalTelemetry.cs
+  uploadId: 962248

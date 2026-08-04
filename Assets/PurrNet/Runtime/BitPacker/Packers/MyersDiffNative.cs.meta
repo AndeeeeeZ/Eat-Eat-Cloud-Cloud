@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 7d5f82298817d0343b04252883b26db6
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/Packers/MyersDiffNative.cs
+  uploadId: 962248

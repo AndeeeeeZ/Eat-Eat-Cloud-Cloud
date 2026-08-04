@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 4dcebfe85f41e2a4782d4903e6b98398
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/PrefabLinkInspector.cs
+  uploadId: 962248

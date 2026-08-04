@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: c5d338f4c0204404691323a22bf72644
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Components/NetworkRigidbody/NetworkRigidbodySettingsInstance.cs
+  uploadId: 962248

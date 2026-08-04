@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 71ce75974f8aad64dbd6a143b542d3ee
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Externals/LiteNetLib/LiteNetManager.PacketPool.cs
+  uploadId: 962248

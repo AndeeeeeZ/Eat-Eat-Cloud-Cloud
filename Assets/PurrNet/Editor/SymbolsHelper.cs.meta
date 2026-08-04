@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: b8589512af6c4794bc0eba78c9af3f00
+timeCreated: 1759915804
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Editor/SymbolsHelper.cs
+  uploadId: 962248

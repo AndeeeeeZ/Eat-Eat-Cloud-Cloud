@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: 99efae6ec44942d7a476b250d1e79ee5
+timeCreated: 1760022099
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Addons/Edgegap/Runtime/EdgegapArbitrium.cs
+  uploadId: 962248

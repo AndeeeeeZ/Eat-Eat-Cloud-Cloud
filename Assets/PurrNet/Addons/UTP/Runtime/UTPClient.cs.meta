@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: c29968e5e84d46489611d39aade0c130
+timeCreated: 1769777952
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Addons/UTP/Runtime/UTPClient.cs
+  uploadId: 962248

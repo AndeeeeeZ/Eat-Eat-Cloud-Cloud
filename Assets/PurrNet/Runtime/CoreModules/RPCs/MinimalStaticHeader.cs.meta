@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: bea8d1d2e564476c8e794f05334b08a5
+timeCreated: 1767708359
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/RPCs/MinimalStaticHeader.cs
+  uploadId: 962248

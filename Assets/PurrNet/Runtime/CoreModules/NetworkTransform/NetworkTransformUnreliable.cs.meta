@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 826d85c207d334f4da57ecee5b37881a
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/CoreModules/NetworkTransform/NetworkTransformUnreliable.cs
+  uploadId: 962248

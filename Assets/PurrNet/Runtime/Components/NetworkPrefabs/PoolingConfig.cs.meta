@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 9772744f8053f794c802482f549371bc
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/Components/NetworkPrefabs/PoolingConfig.cs
+  uploadId: 962248

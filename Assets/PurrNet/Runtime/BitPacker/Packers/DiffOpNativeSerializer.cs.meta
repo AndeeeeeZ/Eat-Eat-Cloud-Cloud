@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 850bac232046d874bb8b4090a59dcb5a
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/Packers/DiffOpNativeSerializer.cs
+  uploadId: 962248

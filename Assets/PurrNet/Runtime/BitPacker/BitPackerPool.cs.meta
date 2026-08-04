@@ -1,0 +1,10 @@
+﻿fileFormatVersion: 2
+guid: bbf084d19bd449beb2bfafcafb6af2bf
+timeCreated: 1731633469
+AssetOrigin:
+  serializedVersion: 1
+  productId: 297320
+  packageName: 'PurrNet: Multiplayer Networking'
+  packageVersion: v1.21.1
+  assetPath: Assets/PurrNet/Runtime/BitPacker/BitPackerPool.cs
+  uploadId: 962248
