@@ -1,0 +1,2 @@
+The MP prefix is to distinct multiplayer scripts from the single player scripts
+MP stands for Multi Player
