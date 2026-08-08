@@ -5,6 +5,8 @@ using UnityEngine.InputSystem;
 public class MP_PlayerInput : NetworkBehaviour
 {
     [SerializeField] private SyncInput<Vector2> movement = new();
+    public Vector2 MovementInput => movement.value; 
+
     private Inputs input;
     private Camera mainCamera; 
 
