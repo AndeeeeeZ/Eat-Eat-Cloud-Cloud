@@ -156,6 +156,34 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "Multiplayer",
+            "id": "df747bf4-098f-4163-836f-429ee8900e5a",
+            "actions": [
+                {
+                    "name": "IsMoving",
+                    "type": "Button",
+                    "id": "6d334b9c-ae66-4638-80b6-2334b2ad7c64",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "0b53447b-6cc8-421d-bfde-a909b4064f12",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "IsMoving",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": []

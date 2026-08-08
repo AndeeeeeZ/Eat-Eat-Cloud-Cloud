@@ -242,6 +242,34 @@ public partial class @Inputs: IInputActionCollection2, IDisposable
                     ""isPartOfComposite"": false
                 }
             ]
+        },
+        {
+            ""name"": ""Multiplayer"",
+            ""id"": ""df747bf4-098f-4163-836f-429ee8900e5a"",
+            ""actions"": [
+                {
+                    ""name"": ""IsMoving"",
+                    ""type"": ""Button"",
+                    ""id"": ""6d334b9c-ae66-4638-80b6-2334b2ad7c64"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""0b53447b-6cc8-421d-bfde-a909b4064f12"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""IsMoving"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
         }
     ],
     ""controlSchemes"": []
@@ -252,12 +280,16 @@ public partial class @Inputs: IInputActionCollection2, IDisposable
         // Camera
         m_Camera = asset.FindActionMap("Camera", throwIfNotFound: true);
         m_Camera_ZoomOut = m_Camera.FindAction("ZoomOut", throwIfNotFound: true);
+        // Multiplayer
+        m_Multiplayer = asset.FindActionMap("Multiplayer", throwIfNotFound: true);
+        m_Multiplayer_IsMoving = m_Multiplayer.FindAction("IsMoving", throwIfNotFound: true);
     }
 
     ~@Inputs()
     {
         UnityEngine.Debug.Assert(!m_Player.enabled, "This will cause a leak and performance issues, Inputs.Player.Disable() has not been called.");
         UnityEngine.Debug.Assert(!m_Camera.enabled, "This will cause a leak and performance issues, Inputs.Camera.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_Multiplayer.enabled, "This will cause a leak and performance issues, Inputs.Multiplayer.Disable() has not been called.");
     }
 
     /// <summary>
@@ -521,6 +553,102 @@ public partial class @Inputs: IInputActionCollection2, IDisposable
     /// Provides a new <see cref="CameraActions" /> instance referencing this action map.
     /// </summary>
     public CameraActions @Camera => new CameraActions(this);
+
+    // Multiplayer
+    private readonly InputActionMap m_Multiplayer;
+    private List<IMultiplayerActions> m_MultiplayerActionsCallbackInterfaces = new List<IMultiplayerActions>();
+    private readonly InputAction m_Multiplayer_IsMoving;
+    /// <summary>
+    /// Provides access to input actions defined in input action map "Multiplayer".
+    /// </summary>
+    public struct MultiplayerActions
+    {
+        private @Inputs m_Wrapper;
+
+        /// <summary>
+        /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public MultiplayerActions(@Inputs wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "Multiplayer/IsMoving".
+        /// </summary>
+        public InputAction @IsMoving => m_Wrapper.m_Multiplayer_IsMoving;
+        /// <summary>
+        /// Provides access to the underlying input action map instance.
+        /// </summary>
+        public InputActionMap Get() { return m_Wrapper.m_Multiplayer; }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
+        public void Enable() { Get().Enable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
+        public void Disable() { Get().Disable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
+        public bool enabled => Get().enabled;
+        /// <summary>
+        /// Implicitly converts an <see ref="MultiplayerActions" /> to an <see ref="InputActionMap" /> instance.
+        /// </summary>
+        public static implicit operator InputActionMap(MultiplayerActions set) { return set.Get(); }
+        /// <summary>
+        /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <param name="instance">Callback instance.</param>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
+        /// </remarks>
+        /// <seealso cref="MultiplayerActions" />
+        public void AddCallbacks(IMultiplayerActions instance)
+        {
+            if (instance == null || m_Wrapper.m_MultiplayerActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_MultiplayerActionsCallbackInterfaces.Add(instance);
+            @IsMoving.started += instance.OnIsMoving;
+            @IsMoving.performed += instance.OnIsMoving;
+            @IsMoving.canceled += instance.OnIsMoving;
+        }
+
+        /// <summary>
+        /// Removes <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <remarks>
+        /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
+        /// </remarks>
+        /// <seealso cref="MultiplayerActions" />
+        private void UnregisterCallbacks(IMultiplayerActions instance)
+        {
+            @IsMoving.started -= instance.OnIsMoving;
+            @IsMoving.performed -= instance.OnIsMoving;
+            @IsMoving.canceled -= instance.OnIsMoving;
+        }
+
+        /// <summary>
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="MultiplayerActions.UnregisterCallbacks(IMultiplayerActions)" />.
+        /// </summary>
+        /// <seealso cref="MultiplayerActions.UnregisterCallbacks(IMultiplayerActions)" />
+        public void RemoveCallbacks(IMultiplayerActions instance)
+        {
+            if (m_Wrapper.m_MultiplayerActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        /// <summary>
+        /// Replaces all existing callback instances and previously registered input action callbacks associated with them with callbacks provided via <param cref="instance" />.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
+        /// </remarks>
+        /// <seealso cref="MultiplayerActions.AddCallbacks(IMultiplayerActions)" />
+        /// <seealso cref="MultiplayerActions.RemoveCallbacks(IMultiplayerActions)" />
+        /// <seealso cref="MultiplayerActions.UnregisterCallbacks(IMultiplayerActions)" />
+        public void SetCallbacks(IMultiplayerActions instance)
+        {
+            foreach (var item in m_Wrapper.m_MultiplayerActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_MultiplayerActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    /// <summary>
+    /// Provides a new <see cref="MultiplayerActions" /> instance referencing this action map.
+    /// </summary>
+    public MultiplayerActions @Multiplayer => new MultiplayerActions(this);
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Player" which allows adding and removing callbacks.
     /// </summary>
@@ -550,5 +678,20 @@ public partial class @Inputs: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnZoomOut(InputAction.CallbackContext context);
+    }
+    /// <summary>
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Multiplayer" which allows adding and removing callbacks.
+    /// </summary>
+    /// <seealso cref="MultiplayerActions.AddCallbacks(IMultiplayerActions)" />
+    /// <seealso cref="MultiplayerActions.RemoveCallbacks(IMultiplayerActions)" />
+    public interface IMultiplayerActions
+    {
+        /// <summary>
+        /// Method invoked when associated input action "IsMoving" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnIsMoving(InputAction.CallbackContext context);
     }
 }
