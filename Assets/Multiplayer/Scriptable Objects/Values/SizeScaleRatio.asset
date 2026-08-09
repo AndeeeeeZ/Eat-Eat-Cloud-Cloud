@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e203b56b135f8fb478e385976207536d, type: 3}
   m_Name: SizeScaleRatio
   m_EditorClassIdentifier: 
-  value: 5
+  value: 1.5

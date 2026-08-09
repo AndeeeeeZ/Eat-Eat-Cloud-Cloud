@@ -70,5 +70,6 @@
     "dotnet.defaultSolution": "In-The-Cloud-Game-Jam.slnx",
     "editor.snippetSuggestions": "top",
     "editor.wordBasedSuggestions": "off",
-    "C_Cpp.autocomplete": "disabled"
+    "C_Cpp.autocomplete": "disabled",
+    "editor.suggest.insertMode": "replace"
 }
