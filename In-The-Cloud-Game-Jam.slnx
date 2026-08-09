@@ -14,6 +14,7 @@
   <Project Path="PurrNet.Profiler.Editor.csproj" />
   <Project Path="PurrNet.Nakama.Editor.csproj" />
   <Project Path="PurrNet.Examples.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="ToolbarExtender.Editor.csproj" />
   <Project Path="PurrNet.Mathematics.csproj" />
   <Project Path="PurrNet.Steam.Editor.csproj" />

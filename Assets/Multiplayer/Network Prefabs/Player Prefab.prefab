@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 716849780268154253}
   - component: {fileID: 8607258186196827580}
   - component: {fileID: -2504300081632877776}
+  - component: {fileID: -8135837681379488093}
   m_Layer: 0
   m_Name: Player Prefab
   m_TagString: Untagged
@@ -179,7 +180,7 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  baseMoveSpeed: 5
+  baseMoveSpeed: {fileID: 11400000, guid: 65cc2f79835e389409196ad2e87ecee9, type: 2}
 --- !u!114 &-2504300081632877776
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -201,6 +202,30 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
+--- !u!114 &-8135837681379488093
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 993116790442422127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9b1f83688f161c49ab33810f83b6e0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  baseExpGap: {fileID: 11400000, guid: fbd8fe1962bb2274489007467342936a, type: 2}
+  expScaleRatio: {fileID: 11400000, guid: 747ac5d54123a5b4083837d858d973d4, type: 2}
+  sizeScaleRatio: {fileID: 11400000, guid: b8a6d6ca6983d2046813cb5721c1e69e, type: 2}
 --- !u!1 &7434814336242701555
 GameObject:
   m_ObjectHideFlags: 0

@@ -67,5 +67,8 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "In-The-Cloud-Game-Jam.slnx"
+    "dotnet.defaultSolution": "In-The-Cloud-Game-Jam.slnx",
+    "editor.snippetSuggestions": "top",
+    "editor.wordBasedSuggestions": "off",
+    "C_Cpp.autocomplete": "disabled"
 }

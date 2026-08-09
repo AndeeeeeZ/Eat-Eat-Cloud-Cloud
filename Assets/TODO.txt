@@ -29,3 +29,4 @@ Questions to ask:
 - Is there respawn? 
 - Current plan for size increase is like several levels, where if you gained a certain amount of exp you will increase size and go to the next level
     - Being able or not able to eat a cloud is determined by level
+- No merging

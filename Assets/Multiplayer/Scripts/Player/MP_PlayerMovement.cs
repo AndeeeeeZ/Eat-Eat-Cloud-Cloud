@@ -6,7 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(MP_PlayerInput))]
 public class MP_PlayerMovement : NetworkBehaviour
 {
-    [SerializeField] private float baseMoveSpeed = 5f;
+    [SerializeField] private FloatValue baseMoveSpeed;
     private MP_PlayerInput playerInput;
 
     private void Awake()
@@ -21,6 +21,6 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         Vector2 direction = playerInput.MovementInput;
 
-        transform.position += (Vector3)(direction * baseMoveSpeed * Time.fixedDeltaTime);
+        transform.position += (Vector3)(direction * baseMoveSpeed.Value * Time.fixedDeltaTime);
     }
 }

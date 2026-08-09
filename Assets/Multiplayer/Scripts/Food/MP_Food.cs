@@ -3,17 +3,19 @@ using PurrNet;
 
 public class MP_Food : NetworkBehaviour
 {
+    [SerializeField] private float expAmount = 1f; 
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!isServer)
             return; 
 
-        MP_PlayerMovement player = collision.GetComponent<MP_PlayerMovement>(); 
+        MP_PlayerStats player = collision.GetComponent<MP_PlayerStats>(); 
 
-        if (player = null)
+        if (player == null)
             return; 
-        
-        Debug.Log("Eat one food"); 
+
+        player.GainExperience(expAmount); 
+
         Destroy(gameObject); 
     }
 }
