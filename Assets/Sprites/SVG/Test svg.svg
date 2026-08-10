@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 1920 1080" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <rect id="画板1" x="0" y="0" width="1920" height="1080" style="fill:none;"/>
+    <g id="画板11" serif:id="画板1">
+        <circle cx="936.441" cy="527.09" r="230.402" style="fill:url(#_Linear1);"/>
+        <clipPath id="_clip2">
+            <circle cx="936.441" cy="527.09" r="230.402"/>
+        </clipPath>
+        <g clip-path="url(#_clip2)">
+            <g id="图层1">
+                <path d="M721.989,490.94C745.727,485.44 796.294,456.822 812.736,510.421C829.178,564.019 779.203,683.997 852.922,649.287C926.64,614.577 969.266,678.518 914.451,713.248C859.635,747.978 844.411,736.387 844.411,736.387C844.411,736.387 721.978,733.934 712.228,736.997C702.478,740.06 653.156,530.527 653.156,530.527C653.156,530.527 698.251,496.439 721.989,490.94Z" style="fill:url(#_Linear3);"/>
+                <path d="M721.989,490.94C745.727,485.44 796.294,456.822 812.736,510.421C829.178,564.019 779.203,683.997 852.922,649.287C926.64,614.577 969.266,678.518 914.451,713.248C859.635,747.978 844.411,736.387 844.411,736.387C844.411,736.387 721.978,733.934 712.228,736.997C702.478,740.06 653.156,530.527 653.156,530.527C653.156,530.527 698.251,496.439 721.989,490.94Z" style="fill:url(#_Linear4);stroke:black;stroke-width:1px;"/>
+                <path d="M1021.47,368.362C947.798,388.707 859.077,362.376 890.255,418.684C921.433,474.992 996.894,445.664 965.755,510.361C934.616,575.059 945.965,625.991 1010.1,601.423C1074.23,576.856 1130.49,578.084 1114.94,509.161C1099.4,440.239 1017.86,483.414 1027.47,434.263C1037.08,385.112 1095.14,348.016 1021.47,368.362Z" style="fill:url(#_Linear5);stroke:black;stroke-width:1px;"/>
+            </g>
+        </g>
+        <g id="图层2">
+            <path d="M956.033,597.885L956.088,597.744L956.287,597.876L956.186,598.013L956.033,597.885Z" style="fill:rgb(133,54,54);stroke:black;stroke-width:1px;"/>
+        </g>
+    </g>
+    <defs>
+        <linearGradient id="_Linear1" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(58.3948,130.175,-130.175,58.3948,856.687,469.058)"><stop offset="0" style="stop-color:rgb(73,96,191);stop-opacity:1"/><stop offset="0.45" style="stop-color:rgb(76,48,164);stop-opacity:1"/><stop offset="1" style="stop-color:rgb(22,44,138);stop-opacity:1"/></linearGradient>
+        <linearGradient id="_Linear3" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(28.8348,60.2292,-60.2292,28.8348,758.207,560.691)"><stop offset="0" style="stop-color:rgb(105,226,88);stop-opacity:1"/><stop offset="1" style="stop-color:rgb(76,163,63);stop-opacity:1"/></linearGradient>
+        <linearGradient id="_Linear4" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(28.8348,60.2292,-60.2292,28.8348,758.207,560.691)"><stop offset="0" style="stop-color:rgb(105,226,88);stop-opacity:1"/><stop offset="1" style="stop-color:rgb(76,163,63);stop-opacity:1"/></linearGradient>
+        <linearGradient id="_Linear5" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(28.8348,60.2292,-60.2292,28.8348,758.207,560.691)"><stop offset="0" style="stop-color:rgb(105,226,88);stop-opacity:1"/><stop offset="1" style="stop-color:rgb(76,163,63);stop-opacity:1"/></linearGradient>
+    </defs>
+</svg>
