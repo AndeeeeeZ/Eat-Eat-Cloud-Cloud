@@ -30,3 +30,8 @@ Questions to ask:
 - Current plan for size increase is like several levels, where if you gained a certain amount of exp you will increase size and go to the next level
     - Being able or not able to eat a cloud is determined by level
 - No merging
+
+
+Ideas:
+- Maybe like a global speed boost every 20 seconds
+- Global vote for bonus
