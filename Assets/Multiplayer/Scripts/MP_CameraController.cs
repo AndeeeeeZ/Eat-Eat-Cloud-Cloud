@@ -20,7 +20,12 @@ public class MP_CameraController : MonoBehaviour
 
     private void OnEnable()
     {
-        MP_LocalPlayerManager.Instance.OnLocalPlayerReady += HandleLocalPlayerReady;
+        MP_LocalPlayerManager manager = MP_LocalPlayerManager.Instance;
+        manager.OnLocalPlayerReady += HandleLocalPlayerReady;
+
+        // In case player spawned before this object subscribe to the event
+        if (manager.LocalPlayer != null)
+            HandleLocalPlayerReady(manager.LocalPlayer);
     }
 
     private void OnDisable()
