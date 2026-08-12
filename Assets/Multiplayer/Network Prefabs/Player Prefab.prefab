@@ -12,9 +12,9 @@ GameObject:
   - component: {fileID: -6795180210800905481}
   - component: {fileID: 4095405779734782555}
   - component: {fileID: 1273462061092512446}
+  - component: {fileID: -6452352967253541942}
   - component: {fileID: 716849780268154253}
   - component: {fileID: 8607258186196827580}
-  - component: {fileID: -2504300081632877776}
   - component: {fileID: -8135837681379488093}
   - component: {fileID: -80913700791028593}
   m_Layer: 0
@@ -135,6 +135,27 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0.20686096}
   m_Radius: 0.70686096
+--- !u!114 &-6452352967253541942
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 993116790442422127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 710a3ea9a5f7fa4419840557efd36f33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
 --- !u!114 &716849780268154253
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -182,27 +203,6 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   baseMoveSpeed: {fileID: 11400000, guid: 65cc2f79835e389409196ad2e87ecee9, type: 2}
---- !u!114 &-2504300081632877776
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 993116790442422127}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 868e1b6bd1acc99479d425b1bc707f32, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _isSetup: 0
-  _prefabId: -2147483648
-  _componentIndex: -2147483648
-  _shouldBePooled: 0
-  _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
-  _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
 --- !u!114 &-8135837681379488093
 MonoBehaviour:
   m_ObjectHideFlags: 0

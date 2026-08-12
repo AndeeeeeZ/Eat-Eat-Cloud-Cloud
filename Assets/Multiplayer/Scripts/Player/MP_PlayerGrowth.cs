@@ -20,6 +20,12 @@ public class MP_PlayerGrowth : NetworkBehaviour
     {
         base.OnSpawned(asServer);
 
+        if (playerStats == null)
+        {
+            Debug.LogError("Missing player stats reference", this); 
+            return; 
+        }
+
         playerStats.Level.onChanged += HandleLevelChanged;
 
         HandleLevelChanged(playerStats.Level.value);
