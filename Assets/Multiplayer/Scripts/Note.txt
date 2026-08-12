@@ -1,2 +1,3 @@
 The MP prefix is to distinct multiplayer scripts from the single player scripts
 MP stands for Multi Player
+Having an MP just means that it's a script from the multiplayer folder, not necessarily that it's being networked

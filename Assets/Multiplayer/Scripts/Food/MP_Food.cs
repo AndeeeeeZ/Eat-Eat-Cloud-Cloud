@@ -9,7 +9,7 @@ public class MP_Food : NetworkBehaviour
         if (!isServer)
             return; 
 
-        MP_PlayerStats player = collision.GetComponent<MP_PlayerStats>(); 
+        MP_PlayerGrowth player = collision.GetComponent<MP_PlayerGrowth>(); 
 
         if (player == null)
             return; 

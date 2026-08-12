@@ -1,12 +1,13 @@
 using Unity.Cinemachine;
 using UnityEngine;
 
+// Note this script is not networked
 public class MP_CameraController : MonoBehaviour
 {
     [SerializeField] private CinemachineCamera cam;
     [SerializeField] private float zoomSpeed = 10f;
 
-    private MP_PlayerStats currentPlayer; 
+    private MP_PlayerGrowth currentPlayer; 
     private float normalSize;
     private float normalScale;
     private float targetScale;
@@ -48,7 +49,7 @@ public class MP_CameraController : MonoBehaviour
 
         cam.Follow = target;
 
-        currentPlayer = target.GetComponent<MP_PlayerStats>();
+        currentPlayer = target.GetComponent<MP_PlayerGrowth>();
 
         if (currentPlayer == null)
             return;
