@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+// Note this class is executed early through script execution order setting
+// Due to other classes referencing to this class's instance in OnEnable
 public class MP_LocalPlayerManager : MonoBehaviour
 {
     public static MP_LocalPlayerManager Instance;

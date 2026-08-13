@@ -11,10 +11,13 @@ public class MP_PlayerGrowth : NetworkBehaviour
     [SerializeField] private FloatValue sizeScaleRatio;
 
     public event Action<float> OnScaleChanged;
+    public event Action OnExpChanged;
 
-    public float Scale => GetScaleFactor();     
+    public float Scale => GetScaleFactor();
+    public float Exp => experience.value;
+    public float ExpCap => GetExperienceRequired();
 
-    private float experience;
+    public readonly SyncVar<float> experience = new(0f);
 
     protected override void OnSpawned(bool asServer)
     {
@@ -22,13 +25,15 @@ public class MP_PlayerGrowth : NetworkBehaviour
 
         if (playerStats == null)
         {
-            Debug.LogError("Missing player stats reference", this); 
-            return; 
+            Debug.LogError("Missing player stats reference", this);
+            return;
         }
 
         playerStats.Level.onChanged += HandleLevelChanged;
+        experience.onChanged += HandleExpChanged;
 
         HandleLevelChanged(playerStats.Level.value);
+        HandleExpChanged(experience.value);
     }
 
     protected override void OnDespawned(bool asServer)
@@ -43,11 +48,11 @@ public class MP_PlayerGrowth : NetworkBehaviour
         if (!isServer)
             return;
 
-        experience += amount;
+        experience.value += amount;
 
-        while (experience >= GetExperienceRequired())
+        while (experience.value >= GetExperienceRequired())
         {
-            experience -= GetExperienceRequired();
+            experience.value -= GetExperienceRequired();
             playerStats.Level.value++;
         }
     }
@@ -62,10 +67,17 @@ public class MP_PlayerGrowth : NetworkBehaviour
         OnScaleChanged?.Invoke(scale);
     }
 
+    private void HandleExpChanged(float newExp)
+    {
+        OnExpChanged?.Invoke();
+    }
+
     private float GetExperienceRequired()
     {
-        return baseExpGap.Value *
-               Mathf.Pow(expScaleRatio.Value, playerStats.Level.value - 1);
+        return Mathf.CeilToInt(
+            baseExpGap.Value *
+            Mathf.Pow(expScaleRatio.Value, playerStats.Level.value - 1)
+        );
     }
 
     private float GetScaleFactor()
