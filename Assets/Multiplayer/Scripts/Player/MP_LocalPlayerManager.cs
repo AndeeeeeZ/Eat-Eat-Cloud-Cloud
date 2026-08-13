@@ -5,11 +5,11 @@ using UnityEngine;
 // Due to other classes referencing to this class's instance in OnEnable
 public class MP_LocalPlayerManager : MonoBehaviour
 {
-    public static MP_LocalPlayerManager Instance;
+    public static MP_LocalPlayerManager Instance { get; private set; }
 
     public event Action<MP_Player> OnLocalPlayerReady;
 
-    public MP_Player LocalPlayer => localPlayer; 
+    public MP_Player LocalPlayer => localPlayer;
     private MP_Player localPlayer;
 
     public void Awake()

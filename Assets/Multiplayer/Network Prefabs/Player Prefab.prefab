@@ -156,6 +156,7 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
+  playerStats: {fileID: -8135837681379488093}
 --- !u!114 &716849780268154253
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -224,6 +225,7 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
+  playerGrowth: {fileID: 0}
 --- !u!114 &-80913700791028593
 MonoBehaviour:
   m_ObjectHideFlags: 0
