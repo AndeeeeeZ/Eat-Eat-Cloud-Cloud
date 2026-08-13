@@ -1,14 +1,14 @@
 using UnityEngine; 
 using PurrNet; 
 
-// Inheret from PlayerIdentity and notify local player manager on spawn
+// Inherit from PlayerIdentity and notify local player manager on spawn
 public class MP_Player : PlayerIdentity<MP_Player>
 {
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
     
-        if (!asServer)
+        if (!asServer && isOwner)
         {
             if (MP_LocalPlayerManager.Instance == null)
             {
