@@ -52,10 +52,8 @@ public class MP_PlayerGrowth : NetworkBehaviour
 
         while (experience.value >= GetExperienceRequired())
         {
-            // Level must be increased before reducing experience
-            // so the remaining experience is calculated against the new level's EXP requirement
-            playerStats.Level.value++;
             experience.value -= GetExperienceRequired();
+            playerStats.Level.value++;
         }
     }
 
@@ -67,6 +65,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
             transform.localScale = Vector3.one * scale;
 
         OnScaleChanged?.Invoke(scale);
+        OnExpChanged?.Invoke(); 
     }
 
     private void HandleExpChanged(float newExp)
