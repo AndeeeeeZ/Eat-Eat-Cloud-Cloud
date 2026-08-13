@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class MP_PlayerStats : NetworkBehaviour
 {
+    [Header("References")]
+    [SerializeField] private MP_PlayerGrowth playerGrowth; 
     public string PlayerName { get; private set; }
-    public readonly SyncVar<int> Level = new(1);
+    public int Level => playerGrowth.Level; 
+    public float Exp => playerGrowth.Exp; 
 }

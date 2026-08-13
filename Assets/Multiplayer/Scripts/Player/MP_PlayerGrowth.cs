@@ -14,10 +14,12 @@ public class MP_PlayerGrowth : NetworkBehaviour
     public event Action OnExpChanged;
 
     public float Scale => GetScaleFactor();
+    public int Level => level.value;
     public float Exp => experience.value;
     public float ExpCap => GetExperienceRequired();
 
-    public readonly SyncVar<float> experience = new(0f);
+    private readonly SyncVar<int> level = new(1);
+    private readonly SyncVar<float> experience = new(0f);
 
     protected override void OnSpawned(bool asServer)
     {
@@ -29,10 +31,10 @@ public class MP_PlayerGrowth : NetworkBehaviour
             return;
         }
 
-        playerStats.Level.onChanged += HandleLevelChanged;
+        level.onChanged += HandleLevelChanged;
         experience.onChanged += HandleExpChanged;
 
-        HandleLevelChanged(playerStats.Level.value);
+        HandleLevelChanged(level.value);
         HandleExpChanged(experience.value);
     }
 
@@ -40,7 +42,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
     {
         base.OnDespawned(asServer);
 
-        playerStats.Level.onChanged -= HandleLevelChanged;
+        level.onChanged -= HandleLevelChanged;
     }
 
     public void GainExperience(float amount)
@@ -53,7 +55,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
         while (experience.value >= GetExperienceRequired())
         {
             experience.value -= GetExperienceRequired();
-            playerStats.Level.value++;
+            level.value++;
         }
     }
 
@@ -65,7 +67,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
             transform.localScale = Vector3.one * scale;
 
         OnScaleChanged?.Invoke(scale);
-        OnExpChanged?.Invoke(); 
+        OnExpChanged?.Invoke();
     }
 
     private void HandleExpChanged(float newExp)
@@ -77,12 +79,12 @@ public class MP_PlayerGrowth : NetworkBehaviour
     {
         return Mathf.CeilToInt(
             baseExpGap.Value *
-            Mathf.Pow(expScaleRatio.Value, playerStats.Level.value - 1)
+            Mathf.Pow(expScaleRatio.Value, level.value - 1)
         );
     }
 
     private float GetScaleFactor()
     {
-        return Mathf.Pow(sizeScaleRatio.Value, playerStats.Level.value - 1);
+        return Mathf.Pow(sizeScaleRatio.Value, level.value - 1);
     }
 }
