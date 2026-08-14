@@ -13,7 +13,6 @@
 
 MP TODO: 
 - Food respawning
-- Player mass/size
 - Player-vs-player collision/eating
 - Player death + respawn
 - Spawn protection / safe spawning
@@ -22,11 +21,3 @@ MP TODO:
 - Interpolation/prediction and network optimization
 - Game juice
 - Connect to lobby and other MP stuff
-
-
-Questions to ask: 
-- Are people allowed to join the game in the middle of a round? Currently designed for no. 
-- Is there respawn? 
-- Current plan for size increase is like several levels, where if you gained a certain amount of exp you will increase size and go to the next level
-    - Being able or not able to eat a cloud is determined by level
-- No merging
