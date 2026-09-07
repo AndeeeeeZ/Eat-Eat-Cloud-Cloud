@@ -1545,6 +1545,8 @@ GameObject:
   - component: {fileID: 2083505732}
   - component: {fileID: 2083505731}
   - component: {fileID: 2083505730}
+  - component: {fileID: 2083505734}
+  - component: {fileID: 2083505733}
   m_Layer: 0
   m_Name: Network Manager
   m_TagString: Untagged
@@ -1595,7 +1597,7 @@ MonoBehaviour:
   _startClientFlags: 6
   _cookieScope: 1
   _dontDestroyOnLoad: 0
-  _transport: {fileID: 2083505730}
+  _transport: {fileID: 2083505733}
   _networkPrefabs: {fileID: 11400000, guid: 581cd877c45722841b015b37e9517330, type: 2}
   _networkAssets: {fileID: 0}
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
@@ -1619,6 +1621,47 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2083505733
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2083505729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8236d3bdb4b232c4e86ae303902bd5db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _ensureAllServersStart: 1
+  _transports:
+  - {fileID: 2083505734}
+  - {fileID: 2083505730}
+--- !u!114 &2083505734
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2083505729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de4778b5edf2476448bcb3ac3d9c35d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _automaticCloudSetups:
+    _adaptToEdgegap: 1
+  _serverPort: 5001
+  _maxConnections: 100
+  _forceIpv4: 0
+  _address: 34.186.71.93
+  _query: 
+  _path: 
+  _pollEventsInUpdate: 0
+  _enableSSL: 0
+  _certPath: 
+  _certPassword: 
+  _sslProtocols: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
