@@ -4,6 +4,13 @@ using PurrNet;
 public class MP_Food : NetworkBehaviour
 {
     [SerializeField] private float expAmount = 1f; 
+
+    private MP_FoodSpawner foodSpawner; 
+
+    public void Initialize(MP_FoodSpawner spawner)
+    {
+        foodSpawner = spawner; 
+    }
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!isServer)
@@ -15,6 +22,8 @@ public class MP_Food : NetworkBehaviour
             return; 
 
         player.GainExperience(expAmount); 
+
+        foodSpawner.RespawnFood(); 
 
         Destroy(gameObject); 
     }

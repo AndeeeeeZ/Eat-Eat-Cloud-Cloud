@@ -1,5 +1,7 @@
+using System.Runtime.InteropServices;
 using PurrNet;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MP_FoodSpawner : NetworkBehaviour
 {
@@ -22,6 +24,14 @@ public class MP_FoodSpawner : NetworkBehaviour
         }
     }
 
+    public void RespawnFood()
+    {
+        if (!isServer)
+            return; 
+
+        SpawnFood(); 
+    }
+
     private void SpawnFood()
     {
         Vector2 position = new Vector2(
@@ -29,6 +39,16 @@ public class MP_FoodSpawner : NetworkBehaviour
             Random.Range(yRange.x, yRange.y)
         );
 
-        Instantiate(foodPrefab, position, Quaternion.identity, transform);
+        GameObject foodObject = Instantiate(foodPrefab, position, Quaternion.identity, transform);
+        
+        MP_Food food = foodObject.GetComponent<MP_Food>(); 
+
+        if (food == null)
+        {
+            Debug.LogError($"Missing MP_Food on {food.name}");
+            return;  
+        }
+
+        food.Initialize(this); 
     }
 }
