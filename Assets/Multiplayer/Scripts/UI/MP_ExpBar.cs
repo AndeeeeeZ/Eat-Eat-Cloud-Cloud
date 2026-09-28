@@ -1,12 +1,12 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI; 
+using UnityEngine.UI;
 
 public class MP_ExpBar : MonoBehaviour
 {
-    [SerializeField] private Image bar; 
-    [SerializeField] private TextMeshProUGUI barText; 
-    private MP_PlayerGrowth playerGrowth; 
+    [SerializeField] private Image bar;
+    [SerializeField] private TextMeshProUGUI barText;
+    private MP_PlayerGrowth playerGrowth;
     private void OnEnable()
     {
         MP_LocalPlayerManager manager = MP_LocalPlayerManager.Instance;
@@ -23,22 +23,27 @@ public class MP_ExpBar : MonoBehaviour
 
         if (playerGrowth != null)
         {
-            playerGrowth.OnExpChanged -= UpdateUI; 
+            playerGrowth.OnExpChanged -= UpdateUI;
         }
     }
 
     private void HandleLocalPlayerReady(MP_Player player)
     {
-        playerGrowth = player.GetComponent<MP_PlayerGrowth>(); 
-        playerGrowth.OnExpChanged += UpdateUI;  
+        playerGrowth = player.GetComponent<MP_PlayerGrowth>();
+        playerGrowth.OnExpChanged += UpdateUI;
     }
+
 
     private void UpdateUI()
     {
-        float exp = playerGrowth.Exp; 
-        float expCap = playerGrowth.ExpCap; 
-        float percentage = Mathf.Clamp01(exp / expCap); 
-        barText.text = $"{exp}/{expCap}"; 
-        bar.fillAmount = percentage; 
+        
+        float exp = playerGrowth.Exp;
+        float expCap = playerGrowth.ExpCap;
+
+        float percentage = Mathf.Clamp01(exp / expCap);
+        
+        // NOTE: the exp and exp cap display are rounded to integers
+        barText.text = $"{Mathf.Round(exp)}/{Mathf.Round(expCap)}";
+        bar.fillAmount = percentage;
     }
 }

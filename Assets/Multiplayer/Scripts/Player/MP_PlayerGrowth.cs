@@ -9,6 +9,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
     [SerializeField] private FloatValue baseExpGap;
     [SerializeField] private FloatValue expScaleRatio;
     [SerializeField] private FloatValue sizeScaleRatio;
+    [SerializeField] private FloatValue eatExpGainRatio; // ExpGained = totalExp * eatExpGainRatio
 
     public event Action<float> OnScaleChanged;
     public event Action OnExpChanged;
@@ -17,9 +18,11 @@ public class MP_PlayerGrowth : NetworkBehaviour
     public int Level => level.value;
     public float Exp => experience.value;
     public float ExpCap => GetExperienceRequired();
+    public float TotalExp => totalExperience.value; 
 
     private readonly SyncVar<int> level = new(1);
     private readonly SyncVar<float> experience = new(0f);
+    private readonly SyncVar<float> totalExperience = new(0f); 
 
     protected override void OnSpawned(bool asServer)
     {
@@ -43,6 +46,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
         base.OnDespawned(asServer);
 
         level.onChanged -= HandleLevelChanged;
+        experience.onChanged -= HandleExpChanged;
     }
 
     public void GainExperience(float amount)
@@ -51,12 +55,18 @@ public class MP_PlayerGrowth : NetworkBehaviour
             return;
 
         experience.value += amount;
+        totalExperience.value += amount; 
 
         while (experience.value >= GetExperienceRequired())
         {
             experience.value -= GetExperienceRequired();
             level.value++;
         }
+    }
+
+    public void GainExperienceFromEating(float otherTotalExp)
+    {
+        GainExperience(otherTotalExp * eatExpGainRatio.Value);
     }
 
     private void HandleLevelChanged(int newLevel)

@@ -8,4 +8,5 @@ public class MP_PlayerStats : NetworkBehaviour
     public string PlayerName { get; private set; }
     public int Level => playerGrowth.Level; 
     public float Exp => playerGrowth.Exp; 
+    public float TotalExp => playerGrowth.TotalExp; 
 }
