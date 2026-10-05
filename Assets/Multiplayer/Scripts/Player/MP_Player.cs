@@ -4,6 +4,7 @@ using PurrNet;
 public class MP_Player : PlayerIdentity<MP_Player>
 {
     [SerializeField] private MP_PlayerStats playerStats;
+    [SerializeField] private MP_PlayerData playerData;
 
     protected override void OnSpawned(bool asServer)
     {
@@ -17,7 +18,6 @@ public class MP_Player : PlayerIdentity<MP_Player>
                 return;
             }
 
-            // Register this player's stats with the server-only manager
             MP_PlayerManager.Instance.RegisterPlayer(playerStats);
             return;
         }
@@ -30,8 +30,9 @@ public class MP_Player : PlayerIdentity<MP_Player>
                 return;
             }
 
-            // Notify local systems about the local player
             MP_LocalPlayerManager.Instance.SetLocalPlayer(this);
+
+            playerStats.SetPlayerName(playerData.PlayerName);
         }
     }
 
