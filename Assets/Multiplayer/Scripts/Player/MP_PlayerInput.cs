@@ -26,22 +26,57 @@ public class MP_PlayerInput : NetworkBehaviour
         if (!isOwner)
             return;
 
-        input.Enable();
+        if (isActiveAndEnabled)
+            input.Multiplayer.Enable();
+    }
+
+    private void OnEnable()
+    {
+        if (IsSpawned(false) && isOwner)
+            input.Multiplayer.Enable();
+    }
+
+    private void OnDisable()
+    {
+        if (IsSpawned(false) && isOwner)
+            movement.value = Vector2.zero;
+
+        input?.Disable();
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        // Ownership may already be cleared, so cleanup must not depend on isOwner
+        input?.Disable();
+        base.OnDespawned(asServer);
+    }
+
+    protected override void OnOwnerChanged(PlayerID? oldOwner, PlayerID? newOwner, bool asServer)
+    {
+        base.OnOwnerChanged(oldOwner, newOwner, asServer);
+        if (asServer)
+            return;
+
+        if (isOwner && isActiveAndEnabled)
+            input.Multiplayer.Enable();
+        else
+            input.Disable();
     }
 
     protected override void OnDestroy()
     {
-        if (isOwner)
+        if (input != null)
         {
             input.Disable();
+            input.Dispose();
+            input = null;
         }
-
         base.OnDestroy();
     }
 
     private void Update()
     {
-        if (!isOwner)
+        if (!IsSpawned(false) || !isOwner || input == null || !input.Multiplayer.enabled)
             return;
 
         MovementUpdate();
