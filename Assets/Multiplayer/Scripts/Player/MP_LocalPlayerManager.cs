@@ -44,7 +44,7 @@ public class MP_LocalPlayerManager : MonoBehaviour
 
     public void ClearLocalPlayer(MP_Player player)
     {
-        // An old cloud's despawn must not clear a newer replacement cloud.
+        // An old cloud's despawn must not clear a newer replacement cloud
         if (ReferenceEquals(localPlayer, null) || !ReferenceEquals(localPlayer, player))
             return;
 
@@ -52,7 +52,7 @@ public class MP_LocalPlayerManager : MonoBehaviour
         OnLocalPlayerLost?.Invoke();
     }
 
-    // Called by the server's targeted death notification, not by generic despawns.
+    // Called by the server's targeted death notification, not by generic despawns
     public void HandleLocalPlayerDeath(string killerName)
     {
         if (HasDied)

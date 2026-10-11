@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Keep this component on an active object outside the panel it hides.
+// Keep this component on an active object outside the panel it hides
 public class MP_DeathScreen : MonoBehaviour
 {
     [SerializeField] private GameObject deathPanel;
@@ -69,7 +69,7 @@ public class MP_DeathScreen : MonoBehaviour
             respawnButton.interactable = true;
         if (messageText != null)
         {
-            // Player names are text, not TMP formatting tags.
+            // Player names are text, not TMP formatting tags
             messageText.richText = false;
             messageText.text = string.IsNullOrWhiteSpace(killerName)
                 ? "You were eaten!"

@@ -3,14 +3,23 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 
-// Server-side connection records survive the death of a player's cloud.
+// Server-side connection records survive the death of a player's cloud
 
-public class MP_PlayerManager : NetworkBehaviour
+[DefaultExecutionOrder(-5)]
+public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvidePrefabInstantiated
 {
     [Header("Respawning")]
     [SerializeField] private MP_Player playerPrefab;
     [SerializeField] private PlayerSpawner spawnPointsSource;
     private int nextRespawnPoint;
+
+    [Header("Safe Spawning")]
+    [SerializeField] private Vector2 spawnXRange = new(-15f, 15f);
+    [SerializeField] private Vector2 spawnYRange = new(-15f, 15f);
+    [SerializeField, Min(0f)] private float spawnClearance = 0.5f;
+    [SerializeField, Min(1)] private int spawnSearchAttempts = 64;
+    private readonly List<MP_Player> pendingClouds = new();
+    private readonly List<MP_SpawnSafety.Space> occupiedSpaces = new();
 
     public static MP_PlayerManager Instance { get; private set; }
     private readonly List<MP_PlayerStats> players = new();
@@ -25,7 +34,7 @@ public class MP_PlayerManager : NetworkBehaviour
     }
 
     private readonly Dictionary<PlayerID, PlayerSession> sessions = new();
-    // Populated on the server only. PlayerCount continues to count living clouds.
+    // Populated on the server only. PlayerCount continues to count living clouds
     public IReadOnlyDictionary<PlayerID, PlayerSession> Sessions => sessions;
     private NetworkManager sessionNetworkManager;
 
@@ -44,6 +53,12 @@ public class MP_PlayerManager : NetworkBehaviour
         Instance = this;
 
         playerCount.onChanged += HandlePlayerCountChange; 
+
+        if (spawnPointsSource != null)
+        {
+            spawnPointsSource.SetRespawnPointProvider(this);
+            spawnPointsSource.SetPrefabInstantiatedProvider(this);
+        }
     }
 
     protected override void OnDestroy()
@@ -51,6 +66,12 @@ public class MP_PlayerManager : NetworkBehaviour
         base.OnDestroy();
 
         playerCount.onChanged -= HandlePlayerCountChange; 
+
+        if (spawnPointsSource != null)
+        {
+            spawnPointsSource.ResetSpawnPointProvider();
+            spawnPointsSource.ResetPrefabInstantiatedProvider();
+        }
 
         if (Instance == this)
             Instance = null; 
@@ -85,6 +106,8 @@ public class MP_PlayerManager : NetworkBehaviour
 
         sessions.Clear();
         players.Clear();
+        pendingClouds.Clear();
+        nextRespawnPoint = 0;
         playerCount.value = 0;
     }
 
@@ -115,6 +138,8 @@ public class MP_PlayerManager : NetworkBehaviour
             Debug.LogWarning("Trying to register a null player"); 
             return; 
         }
+
+        pendingClouds.Remove(player);
 
         if (player.owner.HasValue)
         {
@@ -158,7 +183,7 @@ public class MP_PlayerManager : NetworkBehaviour
             session.Cloud = null;
         }
 
-        // Death removes it immediately; the later despawn callback is a no-op.
+        // Death removes it immediately; the later despawn callback is a no-op
         if (players.Remove(player.Stats))
         {
             playerCount.value--;
@@ -179,7 +204,7 @@ public class MP_PlayerManager : NetworkBehaviour
         ReceivePlayerDeath(player, killerName);
     }
 
-    // Sent from the persistent manager so the message survives the cloud's despawn.
+    // Sent from the persistent manager so the message survives the cloud's despawn
     [TargetRpc]
     private void ReceivePlayerDeath(PlayerID target, string killerName)
     {
@@ -200,13 +225,13 @@ public class MP_PlayerManager : NetworkBehaviour
     [ServerRpc(requireOwnership: false)]
     private void RequestRespawn(RPCInfo info = default)
     {
-        // Identity comes from PurrNet's authenticated sender, never a client-supplied ID.
+        // Identity comes from PurrNet's authenticated sender, never a client-supplied ID
         if (!isServer || !networkManager.TryGetModule<PurrNet.Modules.PlayersManager>(true, out var connectedPlayers) ||
             !connectedPlayers.IsPlayerConnected(info.sender) ||
             !sessions.TryGetValue(info.sender, out PlayerSession session))
             return;
 
-        // Cloud may already exist while its spawn callbacks are still pending.
+        // Cloud may already exist while its spawn callbacks are still pending
         if (!session.CanRespawn || session.Cloud != null)
             return;
 
@@ -218,29 +243,15 @@ public class MP_PlayerManager : NetworkBehaviour
             return;
         }
 
-        Vector3 position = playerPrefab.transform.position;
-        Quaternion rotation = playerPrefab.transform.rotation;
-        if (spawnPointsSource != null)
-        {
-            var points = spawnPointsSource.SpawnPoints;
-            for (int i = 0; i < points.Count; i++)
-            {
-                Transform point = points[nextRespawnPoint % points.Count];
-                nextRespawnPoint = (nextRespawnPoint + 1) % points.Count;
-                if (point == null)
-                    continue;
-                position = point.position;
-                rotation = point.rotation;
-                break;
-            }
-        }
+        SpawnPoint spawn = FindSafeSpawn();
 
-        // Claim eligibility before instantiation to reject repeated requests.
+        // Claim eligibility before instantiation to reject repeated requests
         session.CanRespawn = false;
         GameObject cloud = null;
         try
         {
-            cloud = UnityProxy.Instantiate(playerPrefab.gameObject, position, rotation, gameObject.scene);
+            cloud = UnityProxy.Instantiate(playerPrefab.gameObject, spawn.position, spawn.rotation, gameObject.scene);
+            TrackPendingCloud(cloud);
             MP_Player player = cloud.GetComponent<MP_Player>();
             session.Cloud = player;
             player.GiveOwnership(info.sender);
@@ -261,5 +272,94 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         if (MP_LocalPlayerManager.Instance != null)
             MP_LocalPlayerManager.Instance.HandleRespawnFailure(message);
+    }
+
+    // PurrNet's default spawner uses the same selection for initial joins
+    public SpawnPoint NextSpawnPoint(PlayerID player, SceneID scene)
+    {
+        return FindSafeSpawn();
+    }
+
+    public void OnPrefabInstantiated(GameObject prefabInstance, PlayerID player, SceneID scene)
+    {
+        TrackPendingCloud(prefabInstance);
+    }
+
+    private void TrackPendingCloud(GameObject cloud)
+    {
+        MP_Player player = cloud.GetComponent<MP_Player>();
+        if (player != null && !players.Contains(player.Stats) && !pendingClouds.Contains(player))
+            pendingClouds.Add(player);
+    }
+
+    private SpawnPoint FindSafeSpawn()
+    {
+        occupiedSpaces.Clear();
+        foreach (MP_PlayerStats stats in players)
+        {
+            if (stats == null)
+                continue;
+            MP_Player player = stats.GetComponent<MP_Player>();
+            if (player != null && player.IsAlive)
+                AddOccupiedSpace(player);
+        }
+
+        for (int i = pendingClouds.Count - 1; i >= 0; i--)
+        {
+            MP_Player player = pendingClouds[i];
+            if (player == null)
+                pendingClouds.RemoveAt(i);
+            else
+                AddOccupiedSpace(player);
+        }
+
+        float radius = GetColliderRadius(playerPrefab);
+        float clearance = Mathf.Max(0f, spawnClearance);
+        if (spawnPointsSource != null)
+        {
+            var points = spawnPointsSource.SpawnPoints;
+            for (int i = 0; i < points.Count; i++)
+            {
+                Transform point = points[nextRespawnPoint % points.Count];
+                nextRespawnPoint = (nextRespawnPoint + 1) % points.Count;
+                if (point != null && MP_SpawnSafety.IsClear(point.position, radius, clearance, occupiedSpaces))
+                    return new SpawnPoint { position = point.position, rotation = point.rotation };
+            }
+        }
+
+        Vector3 position = playerPrefab.transform.position;
+        for (int i = 0; i < Mathf.Max(1, spawnSearchAttempts); i++)
+        {
+            position.x = UnityEngine.Random.Range(Mathf.Min(spawnXRange.x, spawnXRange.y), Mathf.Max(spawnXRange.x, spawnXRange.y));
+            position.y = UnityEngine.Random.Range(Mathf.Min(spawnYRange.x, spawnYRange.y), Mathf.Max(spawnYRange.x, spawnYRange.y));
+            if (MP_SpawnSafety.IsClear(position, radius, clearance, occupiedSpaces))
+                return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
+        }
+
+        // The world currently has no boundaries: choose beyond every occupied circle
+        position.x = MP_SpawnSafety.GetClearRightEdge(radius, clearance, occupiedSpaces);
+        return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
+    }
+
+    private void AddOccupiedSpace(MP_Player player)
+    {
+        occupiedSpaces.Add(new MP_SpawnSafety.Space(player.transform.position, GetColliderRadius(player)));
+    }
+
+    private static float GetColliderRadius(MP_Player player)
+    {
+        float radius = 0f;
+        // Enclose every enabled circle, including child eating triggers and offsets
+        // Transform math also works on prefab assets, whose physics bounds are empty
+        foreach (CircleCollider2D collider in player.GetComponentsInChildren<CircleCollider2D>())
+        {
+            if (!collider.enabled)
+                continue;
+            Vector2 center = collider.transform.TransformPoint(collider.offset);
+            Vector3 scale = collider.transform.lossyScale;
+            float worldRadius = collider.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
+            radius = Mathf.Max(radius, Vector2.Distance(center, player.transform.position) + worldRadius);
+        }
+        return radius;
     }
 }

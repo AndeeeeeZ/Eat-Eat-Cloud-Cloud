@@ -6,7 +6,7 @@ public class MP_Player : PlayerIdentity<MP_Player>
     [SerializeField] private MP_PlayerStats playerStats;
     [SerializeField] private MP_PlayerData playerData;
 
-    // Server-only lifecycle state. Set before despawning to guard queued collisions.
+    // Server-only lifecycle state. Set before despawning to guard queued collisions
     public bool IsAlive { get; private set; }
     public MP_PlayerStats Stats => playerStats;
 
@@ -24,7 +24,7 @@ public class MP_Player : PlayerIdentity<MP_Player>
         float experienceToAward = playerStats.TotalExp;
         IsAlive = false;
 
-        // Remove the living cloud immediately; keep its connection record for respawn.
+        // Remove the living cloud immediately; keep its connection record for respawn
         manager.UnregisterPlayer(this);
 
         eaterGrowth.GainExperienceFromEating(experienceToAward);

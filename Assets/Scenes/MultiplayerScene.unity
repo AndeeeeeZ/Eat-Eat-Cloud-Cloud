@@ -424,12 +424,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _playerPrefab: {fileID: 993116790442422127, guid: 6e6509d40062c3d458170c64d7b94b52, type: 3}
   _ignoreNetworkRules: 0
-  spawnPoints:
-  - {fileID: 1892124917}
-  - {fileID: 236564482}
-  - {fileID: 1964584639}
-  - {fileID: 238945903}
-  - {fileID: 296608176}
+  spawnPoints: []
 --- !u!4 &171673887
 Transform:
   m_ObjectHideFlags: 0
@@ -1183,6 +1178,10 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   playerPrefab: {fileID: -6452352967253541942, guid: 6e6509d40062c3d458170c64d7b94b52, type: 3}
   spawnPointsSource: {fileID: 171673886}
+  spawnXRange: {x: -15, y: 15}
+  spawnYRange: {x: -15, y: 15}
+  spawnClearance: 0.5
+  spawnSearchAttempts: 64
 --- !u!4 &1034187463
 Transform:
   m_ObjectHideFlags: 0
