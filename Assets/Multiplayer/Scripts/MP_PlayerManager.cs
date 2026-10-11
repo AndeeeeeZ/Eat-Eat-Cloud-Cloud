@@ -7,6 +7,11 @@ using System;
 
 public class MP_PlayerManager : NetworkBehaviour
 {
+    [Header("Respawning")]
+    [SerializeField] private MP_Player playerPrefab;
+    [SerializeField] private PlayerSpawner spawnPointsSource;
+    private int nextRespawnPoint;
+
     public static MP_PlayerManager Instance { get; private set; }
     private readonly List<MP_PlayerStats> players = new();
     public IReadOnlyList<MP_PlayerStats> Players => players;
@@ -16,6 +21,7 @@ public class MP_PlayerManager : NetworkBehaviour
         public MP_Player Cloud { get; internal set; }
         public string PlayerName { get; internal set; } = "";
         public bool IsAlive => Cloud != null && Cloud.IsAlive;
+        public bool CanRespawn { get; internal set; }
     }
 
     private readonly Dictionary<PlayerID, PlayerSession> sessions = new();
@@ -114,8 +120,12 @@ public class MP_PlayerManager : NetworkBehaviour
         {
             PlayerID owner = player.owner.Value;
             HandlePlayerJoined(owner, false, true);
-            sessions[owner].Cloud = player;
-            sessions[owner].PlayerName = player.Stats.PlayerName;
+            PlayerSession session = sessions[owner];
+            if (!string.IsNullOrWhiteSpace(session.PlayerName))
+                player.Stats.SetPlayerNameOnServer(session.PlayerName);
+            session.Cloud = player;
+            session.PlayerName = player.Stats.PlayerName;
+            session.CanRespawn = false;
         }
 
         if (!players.Contains(player.Stats))
@@ -165,6 +175,7 @@ public class MP_PlayerManager : NetworkBehaviour
         if (!isServer || !sessions.TryGetValue(player, out PlayerSession session) || session.IsAlive)
             return;
 
+        session.CanRespawn = true;
         ReceivePlayerDeath(player, killerName);
     }
 
@@ -174,5 +185,81 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         if (MP_LocalPlayerManager.Instance != null)
             MP_LocalPlayerManager.Instance.HandleLocalPlayerDeath(killerName);
+    }
+
+    public bool TryRequestRespawn()
+    {
+        if (!isSpawned || !isClient || MP_LocalPlayerManager.Instance == null ||
+            !MP_LocalPlayerManager.Instance.HasDied)
+            return false;
+
+        RequestRespawn();
+        return true;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private void RequestRespawn(RPCInfo info = default)
+    {
+        // Identity comes from PurrNet's authenticated sender, never a client-supplied ID.
+        if (!isServer || !networkManager.TryGetModule<PurrNet.Modules.PlayersManager>(true, out var connectedPlayers) ||
+            !connectedPlayers.IsPlayerConnected(info.sender) ||
+            !sessions.TryGetValue(info.sender, out PlayerSession session))
+            return;
+
+        // Cloud may already exist while its spawn callbacks are still pending.
+        if (!session.CanRespawn || session.Cloud != null)
+            return;
+
+        if (playerPrefab == null || playerPrefab.Stats == null ||
+            playerPrefab.GetComponent<MP_PlayerGrowth>() == null)
+        {
+            Debug.LogError("Assign a valid player prefab on MP_PlayerManager to enable respawning.", this);
+            ReceiveRespawnFailure(info.sender, "Respawning is not configured on the server.");
+            return;
+        }
+
+        Vector3 position = playerPrefab.transform.position;
+        Quaternion rotation = playerPrefab.transform.rotation;
+        if (spawnPointsSource != null)
+        {
+            var points = spawnPointsSource.SpawnPoints;
+            for (int i = 0; i < points.Count; i++)
+            {
+                Transform point = points[nextRespawnPoint % points.Count];
+                nextRespawnPoint = (nextRespawnPoint + 1) % points.Count;
+                if (point == null)
+                    continue;
+                position = point.position;
+                rotation = point.rotation;
+                break;
+            }
+        }
+
+        // Claim eligibility before instantiation to reject repeated requests.
+        session.CanRespawn = false;
+        GameObject cloud = null;
+        try
+        {
+            cloud = UnityProxy.Instantiate(playerPrefab.gameObject, position, rotation, gameObject.scene);
+            MP_Player player = cloud.GetComponent<MP_Player>();
+            session.Cloud = player;
+            player.GiveOwnership(info.sender);
+        }
+        catch (Exception exception)
+        {
+            if (cloud != null)
+                UnityProxy.Destroy(cloud);
+            session.Cloud = null;
+            session.CanRespawn = true;
+            Debug.LogException(exception, this);
+            ReceiveRespawnFailure(info.sender, "Unable to respawn. Please try again.");
+        }
+    }
+
+    [TargetRpc]
+    private void ReceiveRespawnFailure(PlayerID target, string message)
+    {
+        if (MP_LocalPlayerManager.Instance != null)
+            MP_LocalPlayerManager.Instance.HandleRespawnFailure(message);
     }
 }

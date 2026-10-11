@@ -10,6 +10,7 @@ public class MP_LocalPlayerManager : MonoBehaviour
     public event Action<MP_Player> OnLocalPlayerReady;
     public event Action OnLocalPlayerLost;
     public event Action<string> OnLocalPlayerDied;
+    public event Action<string> OnRespawnFailed;
 
     public bool HasDied { get; private set; }
     public string KillerName { get; private set; } = "";
@@ -67,6 +68,12 @@ public class MP_LocalPlayerManager : MonoBehaviour
     {
         if (Instance == this)
             Instance = null;
+    }
+
+    public void HandleRespawnFailure(string message)
+    {
+        if (HasDied)
+            OnRespawnFailed?.Invoke(message);
     }
 }
 

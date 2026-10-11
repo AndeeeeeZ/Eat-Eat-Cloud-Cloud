@@ -18,6 +18,14 @@ public class MP_PlayerStats : NetworkBehaviour
     [ServerRpc]
     public void SetPlayerName(string newName)
     {
+        SetPlayerNameOnServer(newName);
+    }
+
+    public void SetPlayerNameOnServer(string newName)
+    {
+        if (!isServer)
+            return;
+
         if (string.IsNullOrWhiteSpace(newName))
         {
             playerName.value = "MissingName";
@@ -43,6 +51,12 @@ public class MP_PlayerStats : NetworkBehaviour
     private void HandlePlayerNameChanged(string newName)
     {
         OnPlayerNameChanged?.Invoke(); 
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        base.OnDespawned(asServer);
+        playerName.onChanged -= HandlePlayerNameChanged;
     }
 
 }
