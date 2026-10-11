@@ -10,6 +10,17 @@ public class MP_PlayerEating : NetworkBehaviour
     }
     private void OnTriggerEnter2D(Collider2D other)
     {
+        TryEat(other);
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        // Recheck overlaps when protection expires or a player's level changes
+        TryEat(other);
+    }
+
+    private void TryEat(Collider2D other)
+    {
         if (!isServer || player == null || !player.IsAlive)
             return;
 
