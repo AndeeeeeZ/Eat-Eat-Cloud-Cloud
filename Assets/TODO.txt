@@ -11,13 +11,47 @@
 - Make player smaller when touching big clouds
 
 
-MP TODO: 
-- Food respawning
-- Player-vs-player collision/eating
-- Player death + respawn
-- Spawn protection / safe spawning
-- Game/map boundaries
-- Score / leaderboard
-- Interpolation/prediction and network optimization
-- Game juice
-- Connect to lobby and other MP stuff
+MP TODO (priority order):
+
+1. Complete player death and respawning
+   - Add death UI and a return-to-lobby or respawn flow.
+   - Rebind the local player, camera, and experience bar after respawning.
+   - Add spawn protection / safe spawning.
+
+2. Harden the existing multiplayer gameplay
+   - Verify food respawning and player-vs-player collision/eating.
+   - Prevent repeated collisions from awarding experience twice.
+   - Clean up event subscriptions and handle disconnects / missing references.
+
+3. Decide multiplayer scaling and world rules
+   - Decide whether movement speed should increase with player size.
+   - Decide how food remains useful as players grow exponentially.
+   - Decide game/map boundaries and whether the world should expand.
+
+4. Verify synchronization with separate clients
+   - Test movement, size, names, experience, food, and player eating.
+   - Test joining an ongoing game and disconnecting.
+   - Test host mode and a dedicated server separately.
+   - Assess movement interpolation / prediction needs.
+
+5. Prove browser-to-server connectivity
+   - Run a headless dedicated server and connect two WebGL clients.
+   - Verify the configured PurrNet transport supports this connection path.
+   - Test secure connections from an HTTPS website.
+   - Complete and verify lobby-to-game connection flow.
+
+6. Prepare cloud deployment and larger sessions
+   - Add server startup configuration and useful logs.
+   - Set up deployment and restart procedures.
+   - Check performance at target player and food counts.
+   - Optimize networking based on measured results.
+
+Additional multiplayer features / polish:
+- Score / leaderboard.
+- Game juice.
+
+Suggested next task:
+- Complete death / respawn and run a two-client gameplay test.
+
+Note: This list is based on script inspection. Verify existing scene wiring
+and deployment setup before treating every item as unimplemented.

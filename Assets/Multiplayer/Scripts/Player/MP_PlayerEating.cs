@@ -3,38 +3,18 @@ using UnityEngine;
 
 public class MP_PlayerEating : NetworkBehaviour
 {
-    private MP_PlayerStats playerStats;
-    private MP_PlayerGrowth playerGrowth;
+    private MP_Player player;
     private void Awake()
     {
-        playerStats = GetComponentInParent<MP_PlayerStats>();
-        playerGrowth = GetComponentInParent<MP_PlayerGrowth>();
+        player = GetComponentInParent<MP_Player>();
     }
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!isServer)
+        if (!isServer || player == null || !player.IsAlive)
             return;
 
-        MP_PlayerStats otherStats = other.GetComponentInParent<MP_PlayerStats>();
-
-        if (otherStats == null)
-        {
-            Debug.LogWarning($"Unable to find MP_PlayerStats in {other.transform.parent.name}'s parent", this);
-            return;
-        }
-
-        if (otherStats.Level < playerStats.Level)
-        {
-            EatPlayer(otherStats);
-        }
-    }
-
-    private void EatPlayer(MP_PlayerStats other)
-    {
-        playerGrowth.GainExperienceFromEating(other.TotalExp);
-
-        Debug.Log($"{playerStats.name} ate {other.name}", this);
-
-        Destroy(other.gameObject);
+        MP_Player victim = other.GetComponentInParent<MP_Player>();
+        if (victim != null)
+            victim.TryDieFromEating(player);
     }
 }

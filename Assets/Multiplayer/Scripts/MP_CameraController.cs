@@ -11,6 +11,7 @@ public class MP_CameraController : MonoBehaviour
     private float normalSize;
     private float normalScale;
     private float targetScale;
+    private MP_LocalPlayerManager localPlayerManager;
 
     private void Awake()
     {
@@ -20,17 +21,26 @@ public class MP_CameraController : MonoBehaviour
 
     private void OnEnable()
     {
-        MP_LocalPlayerManager manager = MP_LocalPlayerManager.Instance;
-        manager.OnLocalPlayerReady += HandleLocalPlayerReady;
+        localPlayerManager = MP_LocalPlayerManager.Instance;
+        if (localPlayerManager == null)
+            return;
+
+        localPlayerManager.OnLocalPlayerReady += HandleLocalPlayerReady;
+        localPlayerManager.OnLocalPlayerLost += RemoveTarget;
 
         // In case player spawned before this object subscribe to the event
-        if (manager.LocalPlayer != null)
-            HandleLocalPlayerReady(manager.LocalPlayer);
+        if (localPlayerManager.LocalPlayer != null)
+            HandleLocalPlayerReady(localPlayerManager.LocalPlayer);
     }
 
     private void OnDisable()
     {
-        MP_LocalPlayerManager.Instance.OnLocalPlayerReady -= HandleLocalPlayerReady;
+        if (localPlayerManager != null)
+        {
+            localPlayerManager.OnLocalPlayerReady -= HandleLocalPlayerReady;
+            localPlayerManager.OnLocalPlayerLost -= RemoveTarget;
+        }
+        RemoveTarget();
     }
 
     private void HandleLocalPlayerReady(MP_Player player)
@@ -46,11 +56,7 @@ public class MP_CameraController : MonoBehaviour
             return;
         }
 
-        if (currentPlayer != null)
-        {
-            RemoveTarget();
-            Debug.LogWarning("Cleared camera's previous target to set to new one", this);
-        }
+        RemoveTarget();
 
         cam.Follow = target;
 
@@ -81,14 +87,11 @@ public class MP_CameraController : MonoBehaviour
 
     public void RemoveTarget()
     {
-        if (currentPlayer == null)
-        {
-            Debug.LogError("Trying to remove target while target is null", this);
-            return;
-        }
-        currentPlayer.OnScaleChanged -= SetScaleTo;
+        if (!ReferenceEquals(currentPlayer, null))
+            currentPlayer.OnScaleChanged -= SetScaleTo;
         currentPlayer = null;
-        cam.Follow = null;
+        if (cam != null)
+            cam.Follow = null;
     }
 
     private void SetScaleTo(float scale)

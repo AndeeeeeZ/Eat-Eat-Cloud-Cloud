@@ -7,36 +7,59 @@ public class MP_ExpBar : MonoBehaviour
     [SerializeField] private Image bar;
     [SerializeField] private TextMeshProUGUI barText;
     private MP_PlayerGrowth playerGrowth;
+    private MP_LocalPlayerManager localPlayerManager;
     private void OnEnable()
     {
-        MP_LocalPlayerManager manager = MP_LocalPlayerManager.Instance;
-        manager.OnLocalPlayerReady += HandleLocalPlayerReady;
+        localPlayerManager = MP_LocalPlayerManager.Instance;
+        ClearPlayer();
+        if (localPlayerManager == null)
+            return;
+
+        localPlayerManager.OnLocalPlayerReady += HandleLocalPlayerReady;
+        localPlayerManager.OnLocalPlayerLost += ClearPlayer;
 
         // In case player spawned before this object subscribe to the event
-        if (manager.LocalPlayer != null)
-            HandleLocalPlayerReady(manager.LocalPlayer);
+        if (localPlayerManager.LocalPlayer != null)
+            HandleLocalPlayerReady(localPlayerManager.LocalPlayer);
     }
 
     private void OnDisable()
     {
-        MP_LocalPlayerManager.Instance.OnLocalPlayerReady -= HandleLocalPlayerReady;
-
-        if (playerGrowth != null)
+        if (localPlayerManager != null)
         {
-            playerGrowth.OnExpChanged -= UpdateUI;
+            localPlayerManager.OnLocalPlayerReady -= HandleLocalPlayerReady;
+            localPlayerManager.OnLocalPlayerLost -= ClearPlayer;
         }
+        ClearPlayer();
     }
 
     private void HandleLocalPlayerReady(MP_Player player)
     {
+        ClearPlayer();
         playerGrowth = player.GetComponent<MP_PlayerGrowth>();
-        playerGrowth.OnExpChanged += UpdateUI;
+        if (playerGrowth != null)
+        {
+            playerGrowth.OnExpChanged += UpdateUI;
+            UpdateUI();
+        }
     }
 
+    private void ClearPlayer()
+    {
+        if (!ReferenceEquals(playerGrowth, null))
+            playerGrowth.OnExpChanged -= UpdateUI;
+        playerGrowth = null;
+        if (bar != null)
+            bar.fillAmount = 0f;
+        if (barText != null)
+            barText.text = "";
+    }
 
     private void UpdateUI()
     {
-        
+        if (playerGrowth == null)
+            return;
+
         float exp = playerGrowth.Exp;
         float expCap = playerGrowth.ExpCap;
 

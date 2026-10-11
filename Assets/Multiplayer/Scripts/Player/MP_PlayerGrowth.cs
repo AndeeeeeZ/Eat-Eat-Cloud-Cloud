@@ -24,6 +24,13 @@ public class MP_PlayerGrowth : NetworkBehaviour
     private readonly SyncVar<float> experience = new(0f);
     private readonly SyncVar<float> totalExperience = new(0f); 
 
+    private MP_Player player;
+
+    private void Awake()
+    {
+        player = GetComponent<MP_Player>();
+    }
+
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
@@ -51,7 +58,7 @@ public class MP_PlayerGrowth : NetworkBehaviour
 
     public void GainExperience(float amount)
     {
-        if (!isServer)
+        if (!isServer || player == null || !player.IsAlive)
             return;
 
         experience.value += amount;
