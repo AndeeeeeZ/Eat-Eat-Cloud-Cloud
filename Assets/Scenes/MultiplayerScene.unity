@@ -2863,6 +2863,21 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   foodPrefab: {fileID: 4007046446493326648, guid: dedac876155424d498ce720971cb9d46, type: 3}
   startingFoodCount: 50
+  columns: 8
+  rows: 8
+  placementAttemptsPerRegion: 8
+  foodClearance: 0.1
+  mergeStages:
+  - firstCycle: 1
+    cellsPerSide: 1
+  - firstCycle: 4
+    cellsPerSide: 2
+  - firstCycle: 7
+    cellsPerSide: 4
+  hideGridGizmos: 0
+  previewCycle: 1
+  baseGridColor: {r: 0.25, g: 0.8, b: 1, a: 1}
+  mergedRegionColor: {r: 1, g: 0.65, b: 0.2, a: 1}
 --- !u!4 &1760640953
 Transform:
   m_ObjectHideFlags: 0
@@ -3529,7 +3544,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   size: {x: 41.2, y: 38.8}
-  showBoundaryGizmo: 1
+  showBoundaryGizmo: 0
   showBoundaryInGame: 1
   boundaryLineWidth: 0.1
   boundaryColor: {r: 0, g: 1, b: 1, a: 1}

@@ -19,6 +19,9 @@ public class MP_Food : NetworkBehaviour
     {
         base.OnSpawned(asServer);
 
+        if (asServer)
+            consumed = false;
+
         spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
         spawnSizeMultiplier.onChanged += ApplySizeMultiplier;
         ApplySizeMultiplier(spawnSizeMultiplier.value);
@@ -27,12 +30,20 @@ public class MP_Food : NetworkBehaviour
     protected override void OnDespawned(bool asServer)
     {
         spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
+        if (asServer && foodSpawner != null)
+        {
+            foodSpawner.UnregisterFood(this);
+            foodSpawner = null;
+        }
+
         base.OnDespawned(asServer);
     }
 
     protected override void OnDestroy()
     {
         spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
+        if (foodSpawner != null)
+            foodSpawner.UnregisterFood(this);
 
         base.OnDestroy();
     }
@@ -61,7 +72,8 @@ public class MP_Food : NetworkBehaviour
         consumed = true;
         player.GainExperience(expAmount); 
 
-        foodSpawner.RespawnFood(); 
+        if (foodSpawner != null)
+            foodSpawner.RespawnFood(this);
 
         Destroy(gameObject); 
     }
