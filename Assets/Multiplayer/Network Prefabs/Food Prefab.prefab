@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2560658589132749803}
   - component: {fileID: 1450167988110448571}
   - component: {fileID: 8817070327491934780}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Food Prefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -90,7 +90,8 @@ MonoBehaviour:
   _invertedPathToNearestParent: 
   _directChildren: []
   _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
+  _visitiblityRules: {fileID: 11400000, guid: 62dfb0ba8dec6334285941713cc88e7f, type: 2}
+  expAmount: 1
 --- !u!1 &7583935634685580628
 GameObject:
   m_ObjectHideFlags: 0
@@ -101,7 +102,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6785599241505313197}
   - component: {fileID: 8022439383363874902}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Sprite
   m_TagString: Untagged
   m_Icon: {fileID: 0}

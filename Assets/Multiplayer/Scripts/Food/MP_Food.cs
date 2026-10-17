@@ -8,11 +8,26 @@ public class MP_Food : NetworkBehaviour
     private readonly SyncVar<float> spawnSizeMultiplier = new(1f);
     private MP_FoodSpawner foodSpawner; 
     private Vector3 baseScale;
+    private CircleCollider2D foodCollider;
     private bool consumed;
+
+    public float VisibilityRadius
+    {
+        get
+        {
+            if (foodCollider == null)
+                return 0f;
+
+            Vector3 scale = transform.lossyScale;
+            return (foodCollider.radius + foodCollider.offset.magnitude) *
+                Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
+        }
+    }
 
     private void Awake()
     {
         baseScale = transform.localScale;
+        foodCollider = GetComponent<CircleCollider2D>();
     }
 
     protected override void OnSpawned(bool asServer)

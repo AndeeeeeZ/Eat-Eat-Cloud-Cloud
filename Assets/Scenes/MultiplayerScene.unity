@@ -1677,8 +1677,8 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   cycleDurationSeconds: 25
-  speedMultiplierPerCycle: 2
-  foodSizeMultiplierPerCycle: 2
+  speedMultiplierPerCycle: 1.5
+  foodSizeMultiplierPerCycle: 1.5
 --- !u!1 &1053914653
 GameObject:
   m_ObjectHideFlags: 0
@@ -2862,9 +2862,10 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   foodPrefab: {fileID: 4007046446493326648, guid: dedac876155424d498ce720971cb9d46, type: 3}
-  startingFoodCount: 50
-  columns: 8
-  rows: 8
+  foodPerGrid: 3
+  maxFoodSpawnsPerFrame: 300
+  columns: 64
+  rows: 64
   placementAttemptsPerRegion: 8
   foodClearance: 0.1
   mergeStages:
@@ -3543,7 +3544,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a691bbbbbb81e54c948902182f7a7ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  size: {x: 41.2, y: 38.8}
+  size: {x: 900, y: 900}
   showBoundaryGizmo: 0
   showBoundaryInGame: 1
   boundaryLineWidth: 0.1
