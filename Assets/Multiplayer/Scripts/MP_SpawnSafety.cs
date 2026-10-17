@@ -26,13 +26,4 @@ public static class MP_SpawnSafety
         return true;
     }
 
-    public static float GetClearRightEdge(float radius, float clearance, IReadOnlyList<Space> occupied)
-    {
-        float rightEdge = 0f;
-        foreach (Space space in occupied)
-            rightEdge = Mathf.Max(rightEdge, space.Center.x + space.Radius);
-
-        // Extra margin avoids exact contact and floating-point rounding at large scales
-        return rightEdge + radius + clearance + Mathf.Max(1f, Mathf.Abs(rightEdge) * 0.001f);
-    }
 }

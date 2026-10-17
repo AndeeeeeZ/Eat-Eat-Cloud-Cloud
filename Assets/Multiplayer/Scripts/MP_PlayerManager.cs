@@ -14,8 +14,6 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     private int nextRespawnPoint;
 
     [Header("Safe Spawning")]
-    [SerializeField] private Vector2 spawnXRange = new(-15f, 15f);
-    [SerializeField] private Vector2 spawnYRange = new(-15f, 15f);
     [SerializeField, Min(0f)] private float spawnClearance = 0.5f;
     [SerializeField, Min(1)] private int spawnSearchAttempts = 64;
     private readonly List<MP_Player> pendingClouds = new();
@@ -243,7 +241,11 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             return;
         }
 
-        SpawnPoint spawn = FindSafeSpawn();
+        if (!TryFindSafeSpawn(out SpawnPoint spawn))
+        {
+            ReceiveRespawnFailure(info.sender, "No safe space is available inside the game boundary.");
+            return;
+        }
 
         // Claim eligibility before instantiation to reject repeated requests
         session.CanRespawn = false;
@@ -277,7 +279,16 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     // PurrNet's default spawner uses the same selection for initial joins
     public SpawnPoint NextSpawnPoint(PlayerID player, SceneID scene)
     {
-        return FindSafeSpawn();
+        if (TryFindSafeSpawn(out SpawnPoint spawn))
+            return spawn;
+
+        Debug.LogWarning("No clear player spawn was found inside the game boundary", this);
+        MP_GameBoundary boundary = MP_GameBoundary.Instance;
+        Vector3 position = playerPrefab.transform.position;
+        if (boundary != null)
+            position = boundary.ClampPosition(position, GetColliderRadius(playerPrefab));
+
+        return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
     }
 
     public void OnPrefabInstantiated(GameObject prefabInstance, PlayerID player, SceneID scene)
@@ -292,8 +303,16 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             pendingClouds.Add(player);
     }
 
-    private SpawnPoint FindSafeSpawn()
+    private bool TryFindSafeSpawn(out SpawnPoint spawn)
     {
+        spawn = default;
+        MP_GameBoundary boundary = MP_GameBoundary.Instance;
+        if (boundary == null)
+        {
+            Debug.LogError("Add MP_GameBoundary to the scene before spawning players", this);
+            return false;
+        }
+
         occupiedSpaces.Clear();
         foreach (MP_PlayerStats stats in players)
         {
@@ -315,6 +334,10 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
         float radius = GetColliderRadius(playerPrefab);
         float clearance = Mathf.Max(0f, spawnClearance);
+        float margin = radius + clearance;
+        if (!boundary.CanFit(margin))
+            return false;
+
         if (spawnPointsSource != null)
         {
             var points = spawnPointsSource.SpawnPoints;
@@ -322,23 +345,26 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             {
                 Transform point = points[nextRespawnPoint % points.Count];
                 nextRespawnPoint = (nextRespawnPoint + 1) % points.Count;
-                if (point != null && MP_SpawnSafety.IsClear(point.position, radius, clearance, occupiedSpaces))
-                    return new SpawnPoint { position = point.position, rotation = point.rotation };
+                if (point != null && boundary.Contains(point.position, margin) &&
+                    MP_SpawnSafety.IsClear(point.position, radius, clearance, occupiedSpaces))
+                {
+                    spawn = new SpawnPoint { position = point.position, rotation = point.rotation };
+                    return true;
+                }
             }
         }
 
-        Vector3 position = playerPrefab.transform.position;
         for (int i = 0; i < Mathf.Max(1, spawnSearchAttempts); i++)
         {
-            position.x = UnityEngine.Random.Range(Mathf.Min(spawnXRange.x, spawnXRange.y), Mathf.Max(spawnXRange.x, spawnXRange.y));
-            position.y = UnityEngine.Random.Range(Mathf.Min(spawnYRange.x, spawnYRange.y), Mathf.Max(spawnYRange.x, spawnYRange.y));
+            boundary.TryGetRandomPosition(margin, out Vector2 position);
             if (MP_SpawnSafety.IsClear(position, radius, clearance, occupiedSpaces))
-                return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
+            {
+                spawn = new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
+                return true;
+            }
         }
 
-        // The world currently has no boundaries: choose beyond every occupied circle
-        position.x = MP_SpawnSafety.GetClearRightEdge(radius, clearance, occupiedSpaces);
-        return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
+        return false;
     }
 
     private void AddOccupiedSpace(MP_Player player)
