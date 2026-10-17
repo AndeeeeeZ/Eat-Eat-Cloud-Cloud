@@ -5,15 +5,52 @@ public class MP_Food : NetworkBehaviour
 {
     [SerializeField] private float expAmount = 1f; 
 
+    private readonly SyncVar<float> spawnSizeMultiplier = new(1f);
     private MP_FoodSpawner foodSpawner; 
+    private Vector3 baseScale;
+    private bool consumed;
 
-    public void Initialize(MP_FoodSpawner spawner)
+    private void Awake()
     {
-        foodSpawner = spawner; 
+        baseScale = transform.localScale;
+    }
+
+    protected override void OnSpawned(bool asServer)
+    {
+        base.OnSpawned(asServer);
+
+        spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
+        spawnSizeMultiplier.onChanged += ApplySizeMultiplier;
+        ApplySizeMultiplier(spawnSizeMultiplier.value);
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
+        base.OnDespawned(asServer);
+    }
+
+    protected override void OnDestroy()
+    {
+        spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
+
+        base.OnDestroy();
+    }
+
+    private void ApplySizeMultiplier(float multiplier)
+    {
+        transform.localScale = baseScale * multiplier;
+    }
+
+    public void Initialize(MP_FoodSpawner spawner, float sizeMultiplier)
+    {
+        foodSpawner = spawner;
+        spawnSizeMultiplier.value = sizeMultiplier;
+        ApplySizeMultiplier(sizeMultiplier);
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (!isServer)
+        if (!isServer || consumed)
             return; 
 
         MP_PlayerGrowth player = collision.GetComponent<MP_PlayerGrowth>(); 
@@ -21,6 +58,7 @@ public class MP_Food : NetworkBehaviour
         if (player == null)
             return; 
 
+        consumed = true;
         player.GainExperience(expAmount); 
 
         foodSpawner.RespawnFood(); 

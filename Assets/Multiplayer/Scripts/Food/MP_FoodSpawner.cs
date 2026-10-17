@@ -49,6 +49,8 @@ public class MP_FoodSpawner : NetworkBehaviour
             return;  
         }
 
-        food.Initialize(this); 
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        float sizeMultiplier = timer != null ? timer.FoodSizeMultiplier : 1f;
+        food.Initialize(this, sizeMultiplier);
     }
 }

@@ -21,6 +21,8 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         Vector2 direction = playerInput.MovementInput;
 
-        transform.position += (Vector3)(direction * baseMoveSpeed.Value * Time.fixedDeltaTime);
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        float speedMultiplier = timer != null ? timer.SpeedMultiplier : 1f;
+        transform.position += (Vector3)(direction * baseMoveSpeed.Value * speedMultiplier * Time.fixedDeltaTime);
     }
 }
