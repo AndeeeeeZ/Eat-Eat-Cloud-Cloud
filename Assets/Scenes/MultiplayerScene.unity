@@ -2667,7 +2667,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &1280835041
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -3536,6 +3536,8 @@ MonoBehaviour:
     cellsPerSide: 8
   - firstCycle: 5
     cellsPerSide: 16
+  - firstCycle: 6
+    cellsPerSide: 32
   hideGridGizmos: 1
   previewCycle: 1
   baseGridColor: {r: 0.25, g: 0.8, b: 1, a: 1}

@@ -47,12 +47,14 @@ public class MP_EnemyAI : NetworkBehaviour
     private double chaseEndsAt;
     private double recentlyChasedTargetAvailableAt;
     private double nextHuntAt;
+    private double nextFoodSearchAt;
     private bool fleeing;
     private bool hasFoodDestination;
     private bool startingExperienceApplied;
 
     public float MovementSpeedMultiplier => Mathf.Max(0f,
         isSpawned ? activePreset.movementSpeedMultiplier : movementSpeedMultiplier);
+    public float AssumedCameraAspectRatio => assumedCameraAspectRatio;
 
     private void Awake()
     {
@@ -77,6 +79,7 @@ public class MP_EnemyAI : NetworkBehaviour
         chaseEndsAt = 0d;
         recentlyChasedTargetAvailableAt = 0d;
         nextHuntAt = 0d;
+        nextFoodSearchAt = 0d;
         fleeing = false;
         hasFoodDestination = false;
         startingExperienceApplied = false;
@@ -96,6 +99,7 @@ public class MP_EnemyAI : NetworkBehaviour
             hasFoodDestination = false;
             currentDirection = Vector2.zero;
             nextHuntAt = 0d;
+            nextFoodSearchAt = 0d;
         }
 
         base.OnDespawned(asServer);
@@ -239,6 +243,9 @@ public class MP_EnemyAI : NetworkBehaviour
             return SmoothDirection((fleeing ? -offset : offset).normalized);
         }
 
+        if (now < nextFoodSearchAt)
+            return SmoothDirection(Vector2.zero);
+
         if (hasFoodDestination)
         {
             Vector2 toFood = foodDestination - (Vector2)transform.position;
@@ -254,10 +261,13 @@ public class MP_EnemyAI : NetworkBehaviour
         if (!isServer || !isSpawned)
             return;
 
-        nextHuntAt = System.Math.Max(nextHuntAt,
-            Time.timeAsDouble + Mathf.Max(0f, activePreset.postEatPauseSeconds));
+        double pauseEndsAt = Time.timeAsDouble +
+            Mathf.Max(0f, activePreset.postEatPauseSeconds);
+        nextHuntAt = System.Math.Max(nextHuntAt, pauseEndsAt);
+        nextFoodSearchAt = System.Math.Max(nextFoodSearchAt, pauseEndsAt);
         target = null;
         fleeing = false;
+        hasFoodDestination = false;
         nextDecisionAt = 0d;
     }
 
@@ -391,7 +401,7 @@ public class MP_EnemyAI : NetworkBehaviour
                 chaseEndsAt = now + Mathf.Max(0.1f, activePreset.chaseDurationSeconds);
         }
 
-        if (target == null && foodSpawner != null)
+        if (target == null && foodSpawner != null && now >= nextFoodSearchAt)
             hasFoodDestination = foodSpawner.TryGetNearestFoodInView((Vector2)transform.position,
                 viewExtents, out foodDestination);
     }

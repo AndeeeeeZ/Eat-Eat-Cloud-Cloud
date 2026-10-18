@@ -1079,6 +1079,20 @@ public class MP_FoodSpawner : NetworkBehaviour
                 return false;
         }
 
+        foreach (MP_PlayerStats stats in playerManager.Players)
+        {
+            if (stats == null || !stats.TryGetComponent(out MP_EnemyAI bot) ||
+                !stats.TryGetComponent(out MP_Player cloud) || !cloud.IsAlive)
+                continue;
+
+            Vector2 viewExtents = GetCameraViewExtents(cloud.transform.localScale.x,
+                bot.AssumedCameraAspectRatio) + Vector2.one * padding;
+            Vector2 offset = position - (Vector2)cloud.transform.position;
+            if (Mathf.Abs(offset.x) <= viewExtents.x &&
+                Mathf.Abs(offset.y) <= viewExtents.y)
+                return false;
+        }
+
         return true;
     }
 
