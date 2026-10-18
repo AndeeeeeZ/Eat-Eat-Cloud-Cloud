@@ -386,6 +386,7 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   enemyName: Bot
+  defaultWeight: 1
   startingExperience: 0
   assumedCameraAspectRatio: 1.7777778
   decisionInterval: 0.25
@@ -393,8 +394,44 @@ MonoBehaviour:
   turnSpeedDegreesPerSecond: 180
   chaseDurationSeconds: 5
   targetSwitchPauseSeconds: 1
-  foodEatenBeforePause: 2
   postEatPauseSeconds: 3
+  presets:
+  - name: Chaser
+    weight: 0.3
+    startingExperience: 0
+    decisionInterval: 0
+    movementSpeedMultiplier: 0.85
+    turnSpeedDegreesPerSecond: 360
+    chaseDurationSeconds: 10
+    targetSwitchPauseSeconds: 0
+    postEatPauseSeconds: 5
+  - name: LockInEater
+    weight: 0.5
+    startingExperience: 0
+    decisionInterval: 0
+    movementSpeedMultiplier: 0
+    turnSpeedDegreesPerSecond: 0
+    chaseDurationSeconds: 0
+    targetSwitchPauseSeconds: 0
+    postEatPauseSeconds: 1
+  - name: BigBot
+    weight: 0.2
+    startingExperience: 40
+    decisionInterval: 0
+    movementSpeedMultiplier: 0.7
+    turnSpeedDegreesPerSecond: 0
+    chaseDurationSeconds: 0
+    targetSwitchPauseSeconds: 0
+    postEatPauseSeconds: 0
+  - name: BobTheBot
+    weight: 0.1
+    startingExperience: 0
+    decisionInterval: 1
+    movementSpeedMultiplier: 1
+    turnSpeedDegreesPerSecond: 0
+    chaseDurationSeconds: 0
+    targetSwitchPauseSeconds: 0
+    postEatPauseSeconds: 1
 --- !u!1 &3106172032961018613
 GameObject:
   m_ObjectHideFlags: 0

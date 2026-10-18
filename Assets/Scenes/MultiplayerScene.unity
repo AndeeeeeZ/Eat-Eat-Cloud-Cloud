@@ -784,8 +784,8 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   enemyPrefab: {fileID: -6452352967253541942, guid: 93c4afe46e7bea347ad29d8acb25f7b2, type: 3}
-  initialEnemySpawns: 2
-  totalEnemySpawns: 5
+  initialEnemySpawns: 4
+  totalEnemySpawns: 9
   spawnIntervalSeconds: 3
   retryInterval: 1
 --- !u!4 &385144706

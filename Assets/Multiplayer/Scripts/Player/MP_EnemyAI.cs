@@ -1,13 +1,28 @@
 using PurrNet;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 // Chooses movement for an ownerless cloud on the server
 [RequireComponent(typeof(MP_Player), typeof(MP_PlayerStats), typeof(MP_PlayerMovement))]
 [RequireComponent(typeof(MP_PlayerGrowth))]
 public class MP_EnemyAI : NetworkBehaviour
 {
+    [System.Serializable]
+    public struct EnemyPreset
+    {
+        public string name;
+        public float weight;
+        public float startingExperience;
+        public float decisionInterval;
+        public float movementSpeedMultiplier;
+        public float turnSpeedDegreesPerSecond;
+        public float chaseDurationSeconds;
+        public float targetSwitchPauseSeconds;
+        public float postEatPauseSeconds;
+    }
+
+    [Header("Default AI")]
     [SerializeField] private string enemyName = "Enemy";
+    [SerializeField, Min(0f)] private float defaultWeight = 1f;
     [SerializeField, Min(0f)] private float startingExperience = 10f;
     [SerializeField, Min(0.5f)] private float assumedCameraAspectRatio = 16f / 9f;
     [SerializeField, Min(0.05f)] private float decisionInterval = 0.25f;
@@ -15,10 +30,11 @@ public class MP_EnemyAI : NetworkBehaviour
     [SerializeField, Min(1f)] private float turnSpeedDegreesPerSecond = 360f;
     [SerializeField, Min(0.1f)] private float chaseDurationSeconds = 3f;
     [SerializeField, Min(0f)] private float targetSwitchPauseSeconds = 1f;
-    [FormerlySerializedAs("cloudsEatenBeforePause")]
-    [SerializeField, Min(1)] private int foodEatenBeforePause = 2;
     [SerializeField, Min(0f)] private float postEatPauseSeconds = 3f;
+    [Header("Presets (nonpositive values use defaults)")]
+    [SerializeField] private EnemyPreset[] presets;
 
+    private EnemyPreset activePreset;
     private MP_Player player;
     private MP_PlayerStats stats;
     private MP_PlayerGrowth growth;
@@ -31,12 +47,12 @@ public class MP_EnemyAI : NetworkBehaviour
     private double chaseEndsAt;
     private double recentlyChasedTargetAvailableAt;
     private double nextHuntAt;
-    private int foodEatenSincePause;
     private bool fleeing;
     private bool hasFoodDestination;
     private bool startingExperienceApplied;
 
-    public float MovementSpeedMultiplier => Mathf.Max(0f, movementSpeedMultiplier);
+    public float MovementSpeedMultiplier => Mathf.Max(0f,
+        isSpawned ? activePreset.movementSpeedMultiplier : movementSpeedMultiplier);
 
     private void Awake()
     {
@@ -52,6 +68,7 @@ public class MP_EnemyAI : NetworkBehaviour
         if (!asServer)
             return;
 
+        SelectPreset();
         target = null;
         recentlyChasedTarget = null;
         nextDecisionAt = 0d;
@@ -60,11 +77,14 @@ public class MP_EnemyAI : NetworkBehaviour
         chaseEndsAt = 0d;
         recentlyChasedTargetAvailableAt = 0d;
         nextHuntAt = 0d;
-        foodEatenSincePause = 0;
         fleeing = false;
         hasFoodDestination = false;
         startingExperienceApplied = false;
-        stats.SetPlayerNameOnServer(enemyName);
+        string baseName = string.IsNullOrWhiteSpace(activePreset.name)
+            ? "Enemy" : activePreset.name.Trim();
+        if (baseName.Length > 14)
+            baseName = baseName.Substring(0, 14);
+        stats.SetPlayerNameOnServer(baseName + Random.Range(0, 100).ToString("D2"));
     }
 
     protected override void OnDespawned(bool asServer)
@@ -76,10 +96,104 @@ public class MP_EnemyAI : NetworkBehaviour
             hasFoodDestination = false;
             currentDirection = Vector2.zero;
             nextHuntAt = 0d;
-            foodEatenSincePause = 0;
         }
 
         base.OnDespawned(asServer);
+    }
+
+    private void SelectPreset()
+    {
+        activePreset = new EnemyPreset
+        {
+            name = enemyName,
+            startingExperience = startingExperience,
+            decisionInterval = decisionInterval,
+            movementSpeedMultiplier = movementSpeedMultiplier,
+            turnSpeedDegreesPerSecond = turnSpeedDegreesPerSecond,
+            chaseDurationSeconds = chaseDurationSeconds,
+            targetSwitchPauseSeconds = targetSwitchPauseSeconds,
+            postEatPauseSeconds = postEatPauseSeconds
+        };
+
+        if (presets == null || presets.Length == 0)
+            return;
+
+        float baseWeight = PositiveWeight(defaultWeight);
+        double totalWeight = baseWeight;
+        int lastSelectable = -1;
+        for (int i = 0; i < presets.Length; i++)
+        {
+            float weight = GetSelectionWeight(presets[i].weight);
+            if (weight <= 0f)
+                continue;
+
+            totalWeight += weight;
+            lastSelectable = i;
+        }
+
+        if (totalWeight <= 0d)
+            return;
+
+        double selection = Random.value * totalWeight;
+        if (selection < baseWeight)
+            return;
+
+        selection -= baseWeight;
+        for (int i = 0; i < presets.Length; i++)
+        {
+            float weight = GetSelectionWeight(presets[i].weight);
+            if (weight <= 0f)
+                continue;
+
+            selection -= weight;
+            if (selection <= 0d)
+            {
+                ApplyPreset(presets[i]);
+                return;
+            }
+        }
+
+        if (lastSelectable >= 0)
+            ApplyPreset(presets[lastSelectable]);
+    }
+
+    private void ApplyPreset(EnemyPreset preset)
+    {
+        if (!string.IsNullOrWhiteSpace(preset.name))
+            activePreset.name = preset.name;
+
+        activePreset.startingExperience = ResolveNumber(preset.startingExperience,
+            startingExperience);
+        activePreset.decisionInterval = ResolveNumber(preset.decisionInterval,
+            decisionInterval);
+        activePreset.movementSpeedMultiplier = ResolveNumber(
+            preset.movementSpeedMultiplier, movementSpeedMultiplier);
+        activePreset.turnSpeedDegreesPerSecond = ResolveNumber(
+            preset.turnSpeedDegreesPerSecond, turnSpeedDegreesPerSecond);
+        activePreset.chaseDurationSeconds = ResolveNumber(preset.chaseDurationSeconds,
+            chaseDurationSeconds);
+        activePreset.targetSwitchPauseSeconds = ResolveNumber(
+            preset.targetSwitchPauseSeconds, targetSwitchPauseSeconds);
+        activePreset.postEatPauseSeconds = ResolveNumber(preset.postEatPauseSeconds,
+            postEatPauseSeconds);
+    }
+
+    private float GetSelectionWeight(float weight)
+    {
+        return float.IsNaN(weight) || float.IsInfinity(weight) || weight <= 0f
+            ? PositiveWeight(defaultWeight) : weight;
+    }
+
+    private static float PositiveWeight(float weight)
+    {
+        return float.IsNaN(weight) || float.IsInfinity(weight) || weight <= 0f
+            ? 0f : weight;
+    }
+
+    private static float ResolveNumber(float value, float fallback)
+    {
+        return value <= 0f || float.IsNaN(value) || float.IsInfinity(value)
+            ? fallback : value;
     }
 
     public Vector2 GetMovementDirection()
@@ -90,23 +204,25 @@ public class MP_EnemyAI : NetworkBehaviour
         if (!startingExperienceApplied)
         {
             startingExperienceApplied = true;
-            if (growth != null && startingExperience > 0f)
-                growth.GainExperience(startingExperience);
+            if (growth != null && activePreset.startingExperience > 0f)
+                growth.GainExperience(activePreset.startingExperience);
         }
 
         double now = Time.timeAsDouble;
         MP_FoodSpawner foodSpawner = MP_FoodSpawner.Instance;
         Vector2 viewExtents = foodSpawner != null
-            ? foodSpawner.GetCameraViewExtents(transform.localScale.x, assumedCameraAspectRatio)
+            ? foodSpawner.GetCameraViewExtents(transform.localScale.x,
+                assumedCameraAspectRatio)
             : Vector2.zero;
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         bool chaseExpired = target != null && !fleeing && now >= chaseEndsAt;
         if (chaseExpired)
         {
             recentlyChasedTarget = target;
-            recentlyChasedTargetAvailableAt = now + Mathf.Max(0.1f, chaseDurationSeconds);
+            recentlyChasedTargetAvailableAt = now + Mathf.Max(0.1f,
+                activePreset.chaseDurationSeconds);
             nextHuntAt = System.Math.Max(nextHuntAt,
-                now + Mathf.Max(0f, targetSwitchPauseSeconds));
+                now + Mathf.Max(0f, activePreset.targetSwitchPauseSeconds));
             target = null;
         }
 
@@ -114,7 +230,7 @@ public class MP_EnemyAI : NetworkBehaviour
         if (chaseExpired || now >= nextDecisionAt || !HasValidTarget(canChase, viewExtents))
         {
             ChooseTarget(now, canChase, viewExtents, foodSpawner);
-            nextDecisionAt = now + Mathf.Max(0.05f, decisionInterval);
+            nextDecisionAt = now + Mathf.Max(0.05f, activePreset.decisionInterval);
         }
 
         if (target != null)
@@ -138,13 +254,8 @@ public class MP_EnemyAI : NetworkBehaviour
         if (!isServer || !isSpawned)
             return;
 
-        foodEatenSincePause++;
-        if (foodEatenSincePause < Mathf.Max(1, foodEatenBeforePause))
-            return;
-
-        foodEatenSincePause = 0;
         nextHuntAt = System.Math.Max(nextHuntAt,
-            Time.timeAsDouble + Mathf.Max(0f, postEatPauseSeconds));
+            Time.timeAsDouble + Mathf.Max(0f, activePreset.postEatPauseSeconds));
         target = null;
         fleeing = false;
         nextDecisionAt = 0d;
@@ -200,7 +311,7 @@ public class MP_EnemyAI : NetworkBehaviour
         float currentAngle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg;
         float desiredAngle = Mathf.Atan2(desiredDirection.y, desiredDirection.x) * Mathf.Rad2Deg;
         float nextAngle = Mathf.MoveTowardsAngle(currentAngle, desiredAngle,
-            Mathf.Max(1f, turnSpeedDegreesPerSecond) * Time.fixedDeltaTime) * Mathf.Deg2Rad;
+            Mathf.Max(1f, activePreset.turnSpeedDegreesPerSecond) * Time.fixedDeltaTime) * Mathf.Deg2Rad;
         currentDirection = new Vector2(Mathf.Cos(nextAngle), Mathf.Sin(nextAngle));
         return currentDirection;
     }
@@ -277,7 +388,7 @@ public class MP_EnemyAI : NetworkBehaviour
         {
             target = keepCurrentChase ? previousTarget : nearestPrey;
             if (target != null && (target != previousTarget || wasFleeing))
-                chaseEndsAt = now + Mathf.Max(0.1f, chaseDurationSeconds);
+                chaseEndsAt = now + Mathf.Max(0.1f, activePreset.chaseDurationSeconds);
         }
 
         if (target == null && foodSpawner != null)
