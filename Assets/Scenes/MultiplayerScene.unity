@@ -428,7 +428,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -33}
-  m_SizeDelta: {x: 200, y: 50}
+  m_SizeDelta: {x: 244.2, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &144632890
 MonoBehaviour:
@@ -674,7 +674,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 50}
+  m_SizeDelta: {x: 344.39, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &254957043
 MonoBehaviour:
@@ -816,16 +816,20 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
-      propertyPath: m_Color.b
+      propertyPath: m_Color.a
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
+      propertyPath: m_Color.b
+      value: 0.047169805
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_Color.g
-      value: 1
+      value: 0.047169805
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_Color.r
-      value: 1
+      value: 0.047169805
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_SortingOrder
@@ -837,7 +841,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -3888481672020999207, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8742538545776668643, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_LocalScale.x
@@ -853,11 +857,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8742538545776668643, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.071
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8742538545776668643, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.007
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8742538545776668643, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1603,7 +1607,7 @@ Transform:
   m_GameObject: {fileID: 1034187461}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -10.900115, y: 4.4563603, z: 3.4743106}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1676,10 +1680,11 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  cycleDurationSeconds: 30
-  speedMultiplierPerCycle: 1.5
-  foodSizeMultiplierPerCycle: 1.5
-  foodExpMultiplierPerCycle: 1.1
+  cycleDurationSeconds: 5
+  finalCycle: 5
+  speedMultiplierPerCycle: 1.6
+  foodSizeMultiplierPerCycle: 2
+  foodExpMultiplierPerCycle: 3
 --- !u!1 &1053914653
 GameObject:
   m_ObjectHideFlags: 0
@@ -2879,11 +2884,15 @@ MonoBehaviour:
   mergeStages:
   - firstCycle: 1
     cellsPerSide: 1
-  - firstCycle: 4
+  - firstCycle: 2
     cellsPerSide: 2
-  - firstCycle: 7
+  - firstCycle: 3
     cellsPerSide: 4
-  hideGridGizmos: 0
+  - firstCycle: 4
+    cellsPerSide: 8
+  - firstCycle: 5
+    cellsPerSide: 16
+  hideGridGizmos: 1
   previewCycle: 1
   baseGridColor: {r: 0.25, g: 0.8, b: 1, a: 1}
   mergedRegionColor: {r: 1, g: 0.65, b: 0.2, a: 1}
@@ -3553,7 +3562,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   size: {x: 900, y: 900}
-  showBoundaryGizmo: 0
+  showBoundaryGizmo: 1
   showBoundaryInGame: 1
   boundaryLineWidth: 0.1
   boundaryColor: {r: 0, g: 1, b: 1, a: 1}

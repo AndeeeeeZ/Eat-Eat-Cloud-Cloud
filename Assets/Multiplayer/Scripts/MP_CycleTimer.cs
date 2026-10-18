@@ -5,6 +5,7 @@ using UnityEngine;
 public class MP_CycleTimer : NetworkBehaviour
 {
     [SerializeField, Min(1f)] private float cycleDurationSeconds = 60f;
+    [SerializeField, Min(1)] private int finalCycle = 5;
     [SerializeField, Min(1f)] private float speedMultiplierPerCycle = 1.1f;
     [SerializeField, Min(1f)] private float foodSizeMultiplierPerCycle = 1.1f;
     [SerializeField, Min(1f)] private float foodExpMultiplierPerCycle = 1.1f;
@@ -18,6 +19,7 @@ public class MP_CycleTimer : NetworkBehaviour
 
     public static MP_CycleTimer Instance { get; private set; }
     public int CurrentCycle => isSpawned ? currentCycle.value : 0;
+    public int FinalCycle => Mathf.Max(1, finalCycle);
     public int SecondsRemaining => isSpawned ? secondsRemaining.value : 0;
     public float SpeedMultiplier => isSpawned ? speedMultiplier.value : 1f;
     public float FoodSizeMultiplier => isSpawned ? foodSizeMultiplier.value : 1f;
@@ -46,23 +48,35 @@ public class MP_CycleTimer : NetworkBehaviour
         if (!asServer)
             return;
 
+        BeginCycle(1);
+        if (currentCycle.value >= FinalCycle)
+        {
+            secondsRemaining.value = 0;
+            return;
+        }
+
         float duration = Mathf.Max(1f, cycleDurationSeconds);
         nextCycleAt = Time.realtimeSinceStartupAsDouble + duration;
-        BeginCycle(1);
         secondsRemaining.value = Mathf.CeilToInt(duration);
     }
 
     private void Update()
     {
-        if (!isServer || !isSpawned || currentCycle.value == 0)
+        if (!isServer || !isSpawned || currentCycle.value == 0 || currentCycle.value >= FinalCycle)
             return;
 
         double now = Time.realtimeSinceStartupAsDouble;
         if (now >= nextCycleAt)
         {
+            BeginCycle(currentCycle.value + 1);
+            if (currentCycle.value >= FinalCycle)
+            {
+                secondsRemaining.value = 0;
+                return;
+            }
+
             float duration = Mathf.Max(1f, cycleDurationSeconds);
             nextCycleAt = now + duration;
-            BeginCycle(currentCycle.value + 1);
         }
 
         int remaining = Mathf.CeilToInt((float)Math.Max(0d, nextCycleAt - now));

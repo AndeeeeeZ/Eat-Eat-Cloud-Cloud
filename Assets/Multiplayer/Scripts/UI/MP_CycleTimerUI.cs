@@ -34,7 +34,11 @@ public class MP_CycleTimerUI : MonoBehaviour
 
     private void UpdateCycle(int cycle)
     {
-        cycleText.text = cycle > 0 ? $"Cycle {cycle}" : "Cycle --";
+        bool isFinalCycle = cycle > 0 && cycle >= cycleTimer.FinalCycle;
+        cycleText.text = isFinalCycle
+            ? "FINAL CYCLE"
+            : cycle > 0 ? $"Cycle {cycle}" : "Cycle --";
+        countdownText.enabled = !isFinalCycle;
     }
 
     private void UpdateCountdown(int seconds)

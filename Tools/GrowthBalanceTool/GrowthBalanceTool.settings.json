@@ -1,0 +1,16 @@
+{
+  "Version": 1,
+  "GraphHeight": 500,
+  "Inputs": {
+    "cycles": 5,
+    "targetGain": 3,
+    "foodPerCycle": 45,
+    "baseFoodXp": 1,
+    "baseGap": 10,
+    "gapRatio": 1.6,
+    "playerSizeRatio": 1.30,
+    "foodSizeRatio": 2,
+    "foodXpRatio": 3,
+    "speedRatio": 1.6
+  }
+}
