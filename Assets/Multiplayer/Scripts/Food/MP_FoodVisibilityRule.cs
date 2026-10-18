@@ -8,8 +8,6 @@ public class MP_FoodVisibilityRule : NetworkVisibilityRule
 
     public override bool CanSee(PlayerID player, NetworkIdentity target)
     {
-        MP_FoodSpawner spawner = MP_FoodSpawner.Instance;
-        return spawner != null && target is MP_Food food &&
-            spawner.ShouldPlayerSeeFood(player, food);
+        return false;
     }
 }

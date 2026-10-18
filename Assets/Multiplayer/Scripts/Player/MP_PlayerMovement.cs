@@ -8,11 +8,15 @@ public class MP_PlayerMovement : NetworkBehaviour
 {
     [SerializeField] private FloatValue baseMoveSpeed;
     private MP_PlayerInput playerInput;
+    private MP_Player player;
+    private MP_PlayerGrowth playerGrowth;
     private CircleCollider2D bodyCollider;
 
     private void Awake()
     {
         playerInput = GetComponent<MP_PlayerInput>(); 
+        player = GetComponent<MP_Player>();
+        playerGrowth = GetComponent<MP_PlayerGrowth>();
         bodyCollider = GetComponent<CircleCollider2D>();
     }
 
@@ -21,6 +25,7 @@ public class MP_PlayerMovement : NetworkBehaviour
         if (!isServer)
             return;
 
+        Vector2 previousPosition = transform.position;
         Vector2 direction = playerInput.MovementInput;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
@@ -42,5 +47,10 @@ public class MP_PlayerMovement : NetworkBehaviour
         }
 
         transform.position = nextPosition;
+
+        MP_FoodSpawner foodSpawner = MP_FoodSpawner.Instance;
+        if (foodSpawner != null && player != null && player.IsAlive)
+            foodSpawner.ConsumeFoodAlongPath(player, playerGrowth, bodyCollider,
+                previousPosition, nextPosition);
     }
 }

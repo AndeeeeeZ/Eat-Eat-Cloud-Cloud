@@ -21,14 +21,38 @@ public class MP_FoodSpawner : NetworkBehaviour
 
     private readonly struct FoodRecord
     {
+        public readonly uint Id;
         public readonly Vector2 Position;
         public readonly float Radius;
+        public readonly Vector2 HitCenter;
+        public readonly float HitRadius;
+        public readonly int SpawnCycle;
+        public readonly float SizeMultiplier;
+        public readonly float Experience;
+        public readonly double EdibleAt;
+        public readonly bool FadeInOnSpawn;
+        public readonly int CellIndex;
 
-        public FoodRecord(Vector2 position, float radius)
+        public FoodRecord(uint id, Vector2 position, float radius, Vector2 hitCenter,
+            float hitRadius, int spawnCycle, float sizeMultiplier, float experience,
+            double edibleAt, bool fadeInOnSpawn, int cellIndex)
         {
+            Id = id;
             Position = position;
             Radius = radius;
+            HitCenter = hitCenter;
+            HitRadius = hitRadius;
+            SpawnCycle = spawnCycle;
+            SizeMultiplier = sizeMultiplier;
+            Experience = experience;
+            EdibleAt = edibleAt;
+            FadeInOnSpawn = fadeInOnSpawn;
+            CellIndex = cellIndex;
         }
+
+        public FoodRecord WithCellIndex(int cellIndex) =>
+            new(Id, Position, Radius, HitCenter, HitRadius, SpawnCycle, SizeMultiplier,
+                Experience, EdibleAt, FadeInOnSpawn, cellIndex);
     }
 
     private sealed class SpawnRegion
@@ -36,6 +60,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         public readonly Rect Bounds;
         public int FoodCount;
         public int InitialRemaining;
+        public int BucketPosition;
         public bool IsQueued;
 
         public SpawnRegion(Rect bounds)
@@ -76,19 +101,30 @@ public class MP_FoodSpawner : NetworkBehaviour
     [SerializeField] private Color baseGridColor = new(1f, 0.2f, 0.8f, 1f);
     [SerializeField] private Color mergedRegionColor = new(1f, 0.65f, 0.2f, 1f);
 
-    private readonly Dictionary<MP_Food, FoodRecord> liveFood = new();
-    private readonly Dictionary<PlayerID, HashSet<MP_Food>> nearbyFoodByPlayer = new();
-    private readonly HashSet<MP_Food> visibilityCandidates = new();
+    private readonly Dictionary<uint, FoodRecord> foodRecords = new();
+    private readonly List<uint> reindexFoodIds = new();
+    private readonly Dictionary<PlayerID, HashSet<int>> nearbyChunksByPlayer = new();
+    private readonly HashSet<PlayerID> readyPlayers = new();
+    private readonly HashSet<int> visibilityCandidates = new();
+    private readonly HashSet<int> dirtyChunks = new();
+    private readonly Dictionary<int, (uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn)> snapshotCache = new();
+    private readonly Dictionary<int, uint> receivedChunkVersions = new();
     private readonly List<SpawnRegion> spawnRegions = new();
+    private readonly List<List<int>> regionsByFoodCount = new();
     private readonly Queue<int> initialRegions = new();
     private readonly Queue<Vector2> pendingRespawns = new();
-    private readonly Queue<MP_Food> retiringFood = new();
-    private readonly List<int> emptySpawnRegions = new();
-    private readonly List<int> partialSpawnRegions = new();
+    private readonly Queue<uint> retiringFood = new();
+    private readonly List<int> redistributionCandidates = new();
     private MP_CycleTimer cycleTimer;
     private NetworkManager visibilityNetworkManager;
-    private List<MP_Food>[] foodByCell;
+    private List<uint>[] foodRecordIdsByCell;
+    private List<uint>[] foodIdsByChunk;
+    private uint[] chunkVersions;
+    private int chunkColumns;
+    private int chunkRows;
+    private MP_FoodClientVisuals clientVisuals;
     private int[] cellRegionIndices;
+    private uint nextFoodId = 1;
     private int activeColumns;
     private int activeRows;
     private int activeGroupSize;
@@ -96,6 +132,10 @@ public class MP_FoodSpawner : NetworkBehaviour
     private Vector2 indexedBoundaryCenter;
     private Vector2 indexedBoundarySize;
     private float largestFoodRadius;
+    private float baseFoodRadius;
+    private float baseFoodHitRadius;
+    private Vector2 baseFoodHitOffset;
+    private float baseFoodExperience;
     private bool initialDistributionStarted;
     private int pendingCycleFood;
     private int lastScheduledCycle;
@@ -104,17 +144,28 @@ public class MP_FoodSpawner : NetworkBehaviour
     private double lastOutdatedFoodDespawnBudgetAt;
     private bool warnedNoSpawnPosition;
     private double nextVisibilityRefreshAt;
+    private const int CellsPerChunk = 4;
+    private const int FailedRegionChecksPerFill = 64;
+    private const double FailedFillRetrySeconds = 1d;
 
     public static MP_FoodSpawner Instance { get; private set; }
+    public int ActiveFoodCount => foodRecords.Count;
 
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
 
-        if (!asServer)
-            return;
-
         Instance = this;
+
+        if (!asServer)
+        {
+            if (!Application.isBatchMode && foodPrefab != null &&
+                foodPrefab.GetComponentInChildren<SpriteRenderer>(true) != null)
+                clientVisuals = new MP_FoodClientVisuals(foodPrefab, transform);
+            RequestFoodChunks();
+            return;
+        }
+
         visibilityNetworkManager = networkManager;
         visibilityNetworkManager.onPlayerLeft += HandleVisibilityPlayerLeft;
 
@@ -124,20 +175,33 @@ public class MP_FoodSpawner : NetworkBehaviour
             return;
         }
 
-        if (foodPrefab == null || foodPrefab.GetComponent<MP_Food>() == null ||
-            foodPrefab.GetComponent<CircleCollider2D>() == null)
+        MP_Food foodComponent = foodPrefab != null ? foodPrefab.GetComponent<MP_Food>() : null;
+        CircleCollider2D foodCollider = foodPrefab != null ? foodPrefab.GetComponent<CircleCollider2D>() : null;
+        SpriteRenderer foodSprite = foodPrefab != null ?
+            foodPrefab.GetComponentInChildren<SpriteRenderer>(true) : null;
+        if (foodComponent == null || foodCollider == null || foodSprite == null)
         {
-            Debug.LogError("Assign a food prefab with MP_Food and CircleCollider2D", this);
+            Debug.LogError("Assign a food prefab with MP_Food, CircleCollider2D, and SpriteRenderer", this);
             return;
         }
 
-        if (foodPrefab.GetComponent<MP_Food>().GetOverrideOrDefault(null) == null)
-            Debug.LogWarning("Assign a food visibility Rule Set to the Food Prefab's MP_Food component", this);
+        Vector3 prefabScale = foodPrefab.transform.lossyScale;
+        baseFoodRadius = (foodCollider.radius + foodCollider.offset.magnitude) *
+            Mathf.Max(Mathf.Abs(prefabScale.x), Mathf.Abs(prefabScale.y));
+        baseFoodHitRadius = foodCollider.radius *
+            Mathf.Max(Mathf.Abs(prefabScale.x), Mathf.Abs(prefabScale.y));
+        baseFoodHitOffset = new Vector2(foodCollider.offset.x * prefabScale.x,
+            foodCollider.offset.y * prefabScale.y);
+        baseFoodExperience = foodComponent.BaseExperience;
 
         activeColumns = columns > 0 ? columns : 8;
         activeRows = rows > 0 ? rows : 8;
-        foodByCell = new List<MP_Food>[activeColumns * activeRows];
-        cellRegionIndices = new int[foodByCell.Length];
+        foodRecordIdsByCell = new List<uint>[activeColumns * activeRows];
+        cellRegionIndices = new int[foodRecordIdsByCell.Length];
+        chunkColumns = (activeColumns + CellsPerChunk - 1) / CellsPerChunk;
+        chunkRows = (activeRows + CellsPerChunk - 1) / CellsPerChunk;
+        foodIdsByChunk = new List<uint>[chunkColumns * chunkRows];
+        chunkVersions = new uint[foodIdsByChunk.Length];
 
         cycleTimer = MP_CycleTimer.Instance;
         if (cycleTimer != null)
@@ -149,6 +213,9 @@ public class MP_FoodSpawner : NetworkBehaviour
 
     private void Update()
     {
+        if (isClient && clientVisuals != null)
+            clientVisuals.Tick(Time.deltaTime);
+
         if (!isServer || !isSpawned)
             return;
 
@@ -171,7 +238,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         if (now >= nextVisibilityRefreshAt)
         {
-            RefreshFoodVisibility();
+            RefreshFoodChunks();
             nextVisibilityRefreshAt = now + Mathf.Max(0.05f, visibilityRefreshInterval);
         }
     }
@@ -188,22 +255,35 @@ public class MP_FoodSpawner : NetworkBehaviour
             visibilityNetworkManager = null;
 
             cycleTimer = null;
-            liveFood.Clear();
-            nearbyFoodByPlayer.Clear();
+            foodRecords.Clear();
+            reindexFoodIds.Clear();
+            nearbyChunksByPlayer.Clear();
+            readyPlayers.Clear();
             visibilityCandidates.Clear();
+            dirtyChunks.Clear();
+            snapshotCache.Clear();
             spawnRegions.Clear();
+            regionsByFoodCount.Clear();
             initialRegions.Clear();
             pendingRespawns.Clear();
             retiringFood.Clear();
-            emptySpawnRegions.Clear();
-            partialSpawnRegions.Clear();
-            foodByCell = null;
+            redistributionCandidates.Clear();
+            foodRecordIdsByCell = null;
+            foodIdsByChunk = null;
+            chunkVersions = null;
+            chunkColumns = 0;
+            chunkRows = 0;
             cellRegionIndices = null;
+            nextFoodId = 1;
             activeColumns = 0;
             activeRows = 0;
             activeGroupSize = 0;
             indexedMaxFoodPerGrid = 0;
             largestFoodRadius = 0f;
+            baseFoodRadius = 0f;
+            baseFoodHitRadius = 0f;
+            baseFoodHitOffset = default;
+            baseFoodExperience = 0f;
             initialDistributionStarted = false;
             pendingCycleFood = 0;
             lastScheduledCycle = 0;
@@ -212,9 +292,17 @@ public class MP_FoodSpawner : NetworkBehaviour
             lastOutdatedFoodDespawnBudgetAt = 0d;
             warnedNoSpawnPosition = false;
             nextVisibilityRefreshAt = 0d;
-            if (Instance == this)
-                Instance = null;
         }
+
+        if (!asServer)
+        {
+            clientVisuals?.Dispose();
+            clientVisuals = null;
+            receivedChunkVersions.Clear();
+        }
+
+        if (Instance == this)
+            Instance = null;
 
         base.OnDespawned(asServer);
     }
@@ -227,69 +315,96 @@ public class MP_FoodSpawner : NetworkBehaviour
         if (visibilityNetworkManager != null)
             visibilityNetworkManager.onPlayerLeft -= HandleVisibilityPlayerLeft;
 
+        clientVisuals?.Dispose();
+        clientVisuals = null;
+
         if (Instance == this)
             Instance = null;
 
         base.OnDestroy();
     }
 
-    public void RespawnFood(MP_Food consumedFood)
+    private void QueueReplacement(FoodRecord record)
     {
-        if (!isServer || ReferenceEquals(consumedFood, null) ||
-            !liveFood.TryGetValue(consumedFood, out FoodRecord record))
-            return;
-
-        int cellIndex = GetCellIndex(record.Position, indexedBoundaryCenter, indexedBoundarySize);
-        int regionIndex = cellRegionIndices[cellIndex];
-        if (!UnregisterFood(consumedFood))
-            return;
-
-        spawnRegions[regionIndex].InitialRemaining = 0;
+        spawnRegions[cellRegionIndices[record.CellIndex]].InitialRemaining = 0;
         pendingRespawns.Enqueue(record.Position);
         nextFillAttemptAt = 0d;
         warnedNoSpawnPosition = false;
     }
 
-    public bool UnregisterFood(MP_Food food)
+    private void RemoveFoodRecord(FoodRecord record)
     {
-        if (!isServer || ReferenceEquals(food, null) || !liveFood.TryGetValue(food, out FoodRecord record))
-            return false;
+        foodRecords.Remove(record.Id);
+        if (foodRecordIdsByCell == null || cellRegionIndices == null || spawnRegions.Count == 0)
+            return;
 
-        liveFood.Remove(food);
-        if (foodByCell != null && cellRegionIndices != null && spawnRegions.Count > 0)
+        foodRecordIdsByCell[record.CellIndex]?.Remove(record.Id);
+        int chunkIndex = GetChunkIndex(record.CellIndex);
+        foodIdsByChunk[chunkIndex]?.Remove(record.Id);
+        MarkChunkDirty(chunkIndex);
+        nextVisibilityRefreshAt = 0d;
+        ChangeRegionFoodCount(cellRegionIndices[record.CellIndex], -1);
+    }
+
+    public void ConsumeFoodAlongPath(MP_Player player, MP_PlayerGrowth growth,
+        CircleCollider2D body, Vector2 from, Vector2 to)
+    {
+        if (!isServer || !isSpawned || player == null || !player.IsAlive ||
+            growth == null || body == null || !body.enabled || foodRecordIdsByCell == null ||
+            indexedBoundarySize.x <= 0f || indexedBoundarySize.y <= 0f)
+            return;
+
+        Vector3 scale = body.transform.lossyScale;
+        float playerRadius = body.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
+        Vector2 centerOffset = (Vector2)body.transform.TransformPoint(body.offset) -
+            (Vector2)player.transform.position;
+        Vector2 start = from + centerOffset;
+        Vector2 end = to + centerOffset;
+        // Sweep across the movement path so fast players cannot skip food
+        float searchRadius = playerRadius + largestFoodRadius;
+        Vector2 minimum = indexedBoundaryCenter - indexedBoundarySize * 0.5f;
+        float cellWidth = indexedBoundarySize.x / activeColumns;
+        float cellHeight = indexedBoundarySize.y / activeRows;
+        int firstColumn = Mathf.Clamp(Mathf.FloorToInt((Mathf.Min(start.x, end.x) -
+            searchRadius - minimum.x) / cellWidth), 0, activeColumns - 1);
+        int lastColumn = Mathf.Clamp(Mathf.FloorToInt((Mathf.Max(start.x, end.x) +
+            searchRadius - minimum.x) / cellWidth), 0, activeColumns - 1);
+        int firstRow = Mathf.Clamp(Mathf.FloorToInt((Mathf.Min(start.y, end.y) -
+            searchRadius - minimum.y) / cellHeight), 0, activeRows - 1);
+        int lastRow = Mathf.Clamp(Mathf.FloorToInt((Mathf.Max(start.y, end.y) +
+            searchRadius - minimum.y) / cellHeight), 0, activeRows - 1);
+        Vector2 movement = end - start;
+        float movementLengthSquared = movement.sqrMagnitude;
+        double now = Time.realtimeSinceStartupAsDouble;
+
+        for (int row = firstRow; row <= lastRow; row++)
         {
-            int cellIndex = GetCellIndex(record.Position, indexedBoundaryCenter, indexedBoundarySize);
-            foodByCell[cellIndex]?.Remove(food);
-            int regionIndex = cellRegionIndices[cellIndex];
-            spawnRegions[regionIndex].FoodCount--;
+            for (int column = firstColumn; column <= lastColumn; column++)
+            {
+                List<uint> cell = foodRecordIdsByCell[row * activeColumns + column];
+                if (cell == null)
+                    continue;
+
+                for (int i = cell.Count - 1; i >= 0; i--)
+                {
+                    FoodRecord record = foodRecords[cell[i]];
+                    if (now < record.EdibleAt)
+                        continue;
+
+                    float progress = movementLengthSquared > 0f ?
+                        Mathf.Clamp01(Vector2.Dot(record.HitCenter - start, movement) /
+                            movementLengthSquared) : 0f;
+                    Vector2 nearest = start + movement * progress;
+                    float reach = playerRadius + record.HitRadius;
+                    if ((record.HitCenter - nearest).sqrMagnitude > reach * reach)
+                        continue;
+
+                    RemoveFoodRecord(record);
+                    QueueReplacement(record);
+                    growth.GainExperience(record.Experience);
+                }
+            }
         }
-        return true;
-    }
-
-    public bool ShouldPlayerSeeFood(PlayerID player, MP_Food food)
-    {
-        MP_PlayerManager playerManager = MP_PlayerManager.Instance;
-        if (playerManager == null || food == null ||
-            !playerManager.Sessions.TryGetValue(player, out MP_PlayerManager.PlayerSession session) ||
-            !session.IsAlive)
-            return false;
-
-        if (food.IsRetiring && !food.IsObserver(player))
-            return false;
-
-        float radius = GetVisibilityRadius(session.Cloud);
-        if (food.IsObserver(player))
-            radius += Mathf.Max(0f, visibilityExitPadding);
-        radius += food.VisibilityRadius;
-
-        Vector2 offset = food.transform.position - session.Cloud.transform.position;
-        return offset.sqrMagnitude <= radius * radius;
-    }
-
-    public bool IsFoodVisibleToAnyPlayer(MP_Food food)
-    {
-        return food != null && !IsOutsideAllPlayerViews(food.transform.position,
-            food.VisibilityRadius);
     }
 
     private float GetVisibilityRadius(MP_Player cloud)
@@ -300,78 +415,135 @@ public class MP_FoodSpawner : NetworkBehaviour
             Mathf.Sqrt(1f + aspect * aspect) + Mathf.Max(0f, visibilityMargin);
     }
 
-    private void RefreshFoodVisibility()
+    private void RefreshFoodChunks()
     {
         MP_PlayerManager playerManager = MP_PlayerManager.Instance;
-        if (playerManager == null || foodByCell == null || indexedBoundarySize.x <= 0f ||
+        if (playerManager == null || foodIdsByChunk == null || indexedBoundarySize.x <= 0f ||
             indexedBoundarySize.y <= 0f)
             return;
 
+        snapshotCache.Clear();
         foreach (KeyValuePair<PlayerID, MP_PlayerManager.PlayerSession> entry in playerManager.Sessions)
         {
             PlayerID player = entry.Key;
-            if (!nearbyFoodByPlayer.TryGetValue(player, out HashSet<MP_Food> previous))
+            if (!readyPlayers.Contains(player))
+                continue;
+
+            if (!nearbyChunksByPlayer.TryGetValue(player, out HashSet<int> previous))
             {
-                previous = new HashSet<MP_Food>();
-                nearbyFoodByPlayer.Add(player, previous);
+                previous = new HashSet<int>();
+                nearbyChunksByPlayer.Add(player, previous);
             }
 
             visibilityCandidates.Clear();
             if (entry.Value.IsAlive)
             {
                 MP_Player cloud = entry.Value.Cloud;
-                float radius = GetVisibilityRadius(cloud) + Mathf.Max(0f, visibilityExitPadding) + largestFoodRadius;
-                GatherFoodNear(cloud.transform.position, radius, visibilityCandidates);
+                float radius = GetVisibilityRadius(cloud) +
+                    Mathf.Max(0f, visibilityExitPadding) + largestFoodRadius;
+                GatherChunksNear(cloud.transform.position, radius, visibilityCandidates);
             }
 
-            foreach (MP_Food food in previous)
-                if (food != null && food.isSpawned && !visibilityCandidates.Contains(food) &&
-                    food.IsObserver(player))
-                    food.EvaluateVisibility(player);
+            foreach (int chunkIndex in previous)
+                if (!visibilityCandidates.Contains(chunkIndex))
+                    ReceiveFoodChunkClear(player, chunkIndex);
 
-            foreach (MP_Food food in visibilityCandidates)
-                if (food != null && food.isSpawned &&
-                    food.IsObserver(player) != ShouldPlayerSeeFood(player, food))
-                    food.EvaluateVisibility(player);
+            foreach (int chunkIndex in visibilityCandidates)
+                if (!previous.Contains(chunkIndex) || dirtyChunks.Contains(chunkIndex))
+                    SendFoodChunk(player, chunkIndex);
 
             previous.Clear();
             previous.UnionWith(visibilityCandidates);
         }
+
+        dirtyChunks.Clear();
     }
 
-    private void GatherFoodNear(Vector2 position, float radius, HashSet<MP_Food> results)
+    private void GatherChunksNear(Vector2 position, float radius, HashSet<int> results)
     {
         Vector2 minimum = indexedBoundaryCenter - indexedBoundarySize * 0.5f;
-        float cellWidth = indexedBoundarySize.x / activeColumns;
-        float cellHeight = indexedBoundarySize.y / activeRows;
-        int firstColumn = Mathf.Clamp(Mathf.FloorToInt((position.x - radius - minimum.x) / cellWidth),
-            0, activeColumns - 1);
-        int lastColumn = Mathf.Clamp(Mathf.FloorToInt((position.x + radius - minimum.x) / cellWidth),
-            0, activeColumns - 1);
-        int firstRow = Mathf.Clamp(Mathf.FloorToInt((position.y - radius - minimum.y) / cellHeight),
-            0, activeRows - 1);
-        int lastRow = Mathf.Clamp(Mathf.FloorToInt((position.y + radius - minimum.y) / cellHeight),
-            0, activeRows - 1);
+        Vector2 maximum = minimum + indexedBoundarySize;
+        if (position.x + radius < minimum.x || position.x - radius > maximum.x ||
+            position.y + radius < minimum.y || position.y - radius > maximum.y)
+            return;
+
+        float chunkWidth = indexedBoundarySize.x * CellsPerChunk / activeColumns;
+        float chunkHeight = indexedBoundarySize.y * CellsPerChunk / activeRows;
+        int firstColumn = Mathf.Clamp(Mathf.FloorToInt((position.x - radius - minimum.x) / chunkWidth),
+            0, chunkColumns - 1);
+        int lastColumn = Mathf.Clamp(Mathf.FloorToInt((position.x + radius - minimum.x) / chunkWidth),
+            0, chunkColumns - 1);
+        int firstRow = Mathf.Clamp(Mathf.FloorToInt((position.y - radius - minimum.y) / chunkHeight),
+            0, chunkRows - 1);
+        int lastRow = Mathf.Clamp(Mathf.FloorToInt((position.y + radius - minimum.y) / chunkHeight),
+            0, chunkRows - 1);
 
         for (int row = firstRow; row <= lastRow; row++)
-        {
             for (int column = firstColumn; column <= lastColumn; column++)
-            {
-                List<MP_Food> cell = foodByCell[row * activeColumns + column];
-                if (cell == null)
-                    continue;
+                results.Add(row * chunkColumns + column);
+    }
 
-                foreach (MP_Food food in cell)
-                    if (food != null)
-                        results.Add(food);
+    private void SendFoodChunk(PlayerID player, int chunkIndex)
+    {
+        if (!snapshotCache.TryGetValue(chunkIndex,
+                out (uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn) snapshot))
+        {
+            List<uint> foodIds = foodIdsByChunk[chunkIndex];
+            int count = foodIds?.Count ?? 0;
+            uint[] ids = new uint[count];
+            Vector2[] positions = new Vector2[count];
+            float[] sizes = new float[count];
+            bool[] fadeIn = new bool[count];
+            for (int i = 0; i < count; i++)
+            {
+                FoodRecord record = foodRecords[foodIds[i]];
+                ids[i] = record.Id;
+                positions[i] = record.Position;
+                sizes[i] = record.SizeMultiplier;
+                fadeIn[i] = record.FadeInOnSpawn;
             }
+
+            snapshot = (ids, positions, sizes, fadeIn);
+            snapshotCache.Add(chunkIndex, snapshot);
         }
+
+        ReceiveFoodChunk(player, chunkIndex, chunkVersions[chunkIndex],
+            snapshot.ids, snapshot.positions, snapshot.sizes, snapshot.fadeIn);
+    }
+
+    [TargetRpc(runLocally: true)]
+    private void ReceiveFoodChunk(PlayerID target, int chunkIndex, uint version,
+        uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn)
+    {
+        if (clientVisuals == null ||
+            (receivedChunkVersions.TryGetValue(chunkIndex, out uint previous) && version < previous))
+            return;
+
+        clientVisuals.ApplyChunk(chunkIndex, ids, positions, sizes, fadeIn);
+        receivedChunkVersions[chunkIndex] = version;
+    }
+
+    [TargetRpc(runLocally: true)]
+    private void ReceiveFoodChunkClear(PlayerID target, int chunkIndex)
+    {
+        clientVisuals?.ClearChunk(chunkIndex);
+        receivedChunkVersions.Remove(chunkIndex);
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private void RequestFoodChunks(RPCInfo info = default)
+    {
+        if (readyPlayers.Add(info.sender))
+            nextVisibilityRefreshAt = 0d;
     }
 
     private void HandleVisibilityPlayerLeft(PlayerID player, bool asServer)
     {
         if (asServer)
-            nearbyFoodByPlayer.Remove(player);
+        {
+            nearbyChunksByPlayer.Remove(player);
+            readyPlayers.Remove(player);
+        }
     }
 
     private void DespawnOutdatedFood(double now, int maxPerFrame)
@@ -398,18 +570,19 @@ public class MP_FoodSpawner : NetworkBehaviour
         int currentCycle = GetCurrentCycle();
         for (int i = 0; i < candidatesToCheck && despawned < allowedDespawns; i++)
         {
-            MP_Food food = retiringFood.Dequeue();
-            if (food == null || !food.isSpawned || food.IsRetiring ||
-                food.SpawnCycle > currentCycle - 2)
+            uint foodId = retiringFood.Dequeue();
+            if (!foodRecords.TryGetValue(foodId, out FoodRecord record) ||
+                record.SpawnCycle > currentCycle - 2)
                 continue;
 
-            if (IsFoodVisibleToAnyPlayer(food))
+            if (!IsOutsideAllPlayerViews(record.Position, record.Radius))
             {
-                retiringFood.Enqueue(food);
+                retiringFood.Enqueue(foodId);
                 continue;
             }
 
-            food.ExpireIfOutdated(currentCycle);
+            RemoveFoodRecord(record);
+            QueueReplacement(record);
             outdatedFoodDespawnAllowance -= 1d;
             despawned++;
         }
@@ -426,9 +599,9 @@ public class MP_FoodSpawner : NetworkBehaviour
         TryFillTargetFood(0);
 
         retiringFood.Clear();
-        foreach (MP_Food food in liveFood.Keys)
-            if (food != null && food.SpawnCycle <= cycle - 2 && !food.IsRetiring)
-                retiringFood.Enqueue(food);
+        foreach (FoodRecord record in foodRecords.Values)
+            if (record.SpawnCycle <= cycle - 2)
+                retiringFood.Enqueue(record.Id);
     }
 
     private void ScheduleCycleFood(int cycle)
@@ -444,7 +617,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
     private void TryFillTargetFood(int maxSpawns)
     {
-        if (!isServer || foodByCell == null)
+        if (!isServer || foodRecordIdsByCell == null)
             return;
 
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
@@ -453,42 +626,47 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         EnsureSpawnRegions(boundary);
         int replacementsToTry = pendingRespawns.Count;
+        int regionChecksRemaining = FailedRegionChecksPerFill;
         bool cycleSpawnBlocked = false;
         bool initialSpawnBlocked = false;
         bool fillingFirstCycle = GetCurrentCycle() == 1;
-        for (int spawned = 0; spawned < maxSpawns; spawned++)
+        for (int spawned = 0; spawned < maxSpawns && regionChecksRemaining > 0; spawned++)
         {
             bool didSpawn = false;
-            if (fillingFirstCycle && initialRegions.Count > 0 && !initialSpawnBlocked)
+            if (replacementsToTry > 0)
             {
-                didSpawn = TrySpawnInitialFood(boundary);
+                Vector2 source = pendingRespawns.Dequeue();
+                replacementsToTry--;
+                didSpawn = TrySpawnReplacement(boundary, source, ref regionChecksRemaining);
+                if (!didSpawn)
+                    pendingRespawns.Enqueue(source);
+            }
+
+            if (!didSpawn && regionChecksRemaining > 0 && fillingFirstCycle &&
+                initialRegions.Count > 0 && !initialSpawnBlocked)
+            {
+                didSpawn = TrySpawnInitialFood(boundary, ref regionChecksRemaining);
                 if (!didSpawn)
                     initialSpawnBlocked = true;
             }
 
-            if (!didSpawn && pendingCycleFood > 0 && !cycleSpawnBlocked)
+            if (!didSpawn && regionChecksRemaining > 0 && pendingCycleFood > 0 &&
+                !cycleSpawnBlocked)
             {
-                didSpawn = TrySpawnCycleFood(boundary);
+                didSpawn = TrySpawnCycleFood(boundary, ref regionChecksRemaining);
                 if (didSpawn)
                     pendingCycleFood--;
                 else
                     cycleSpawnBlocked = true;
             }
 
-            if (!didSpawn && replacementsToTry > 0)
-            {
-                Vector2 source = pendingRespawns.Dequeue();
-                replacementsToTry--;
-                didSpawn = TrySpawnReplacement(boundary, source);
-                if (!didSpawn)
-                    pendingRespawns.Enqueue(source);
-            }
-
-            if (!didSpawn && initialRegions.Count > 0 && !initialSpawnBlocked)
-                didSpawn = TrySpawnInitialFood(boundary);
+            if (!didSpawn && regionChecksRemaining > 0 && initialRegions.Count > 0 &&
+                !initialSpawnBlocked)
+                didSpawn = TrySpawnInitialFood(boundary, ref regionChecksRemaining);
 
             if (didSpawn)
             {
+                regionChecksRemaining++;
                 warnedNoSpawnPosition = false;
                 continue;
             }
@@ -497,11 +675,11 @@ public class MP_FoodSpawner : NetworkBehaviour
             {
                 if (!warnedNoSpawnPosition)
                 {
-                    Debug.LogWarning("No collision-free food position is available inside the grid bounds", this);
+                    Debug.LogWarning("No hidden collision-free food position was found within the search budget", this);
                     warnedNoSpawnPosition = true;
                 }
 
-                nextFillAttemptAt = Time.realtimeSinceStartupAsDouble + 2d;
+                nextFillAttemptAt = Time.realtimeSinceStartupAsDouble + FailedFillRetrySeconds;
             }
             return;
         }
@@ -526,6 +704,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         indexedBoundaryCenter = boundary.Center;
         indexedBoundarySize = boundary.Size;
         spawnRegions.Clear();
+        regionsByFoodCount.Clear();
         initialRegions.Clear();
 
         int regionColumns = 1 + (activeColumns - 1) / groupSize;
@@ -536,7 +715,9 @@ public class MP_FoodSpawner : NetworkBehaviour
                 Rect bounds = GetRegionBounds(boundary, column, row,
                     Mathf.Min(column + groupSize, activeColumns),
                     Mathf.Min(row + groupSize, activeRows), activeColumns, activeRows);
+                int regionIndex = spawnRegions.Count;
                 spawnRegions.Add(new SpawnRegion(bounds));
+                AddRegionToBucket(regionIndex, 0);
             }
         }
 
@@ -545,16 +726,28 @@ public class MP_FoodSpawner : NetworkBehaviour
                 cellRegionIndices[row * activeColumns + column] =
                     (row / groupSize) * regionColumns + column / groupSize;
 
-        foreach (List<MP_Food> cell in foodByCell)
+        foreach (List<uint> cell in foodRecordIdsByCell)
             cell?.Clear();
 
-        foreach (KeyValuePair<MP_Food, FoodRecord> entry in liveFood)
+        foreach (List<uint> chunk in foodIdsByChunk)
+            chunk?.Clear();
+
+        for (int chunkIndex = 0; chunkIndex < foodIdsByChunk.Length; chunkIndex++)
+            MarkChunkDirty(chunkIndex);
+
+        reindexFoodIds.Clear();
+        reindexFoodIds.AddRange(foodRecords.Keys);
+        foreach (uint foodId in reindexFoodIds)
         {
-            FoodRecord record = entry.Value;
+            FoodRecord record = foodRecords[foodId];
             int cellIndex = GetCellIndex(record.Position, indexedBoundaryCenter, indexedBoundarySize);
-            AddFoodToCell(entry.Key, cellIndex);
-            spawnRegions[cellRegionIndices[cellIndex]].FoodCount++;
+            record = record.WithCellIndex(cellIndex);
+            foodRecords[foodId] = record;
+            AddRecordToCell(foodId, cellIndex);
+            AddRecordToChunk(foodId, GetChunkIndex(cellIndex));
+            ChangeRegionFoodCount(cellRegionIndices[cellIndex], 1);
         }
+        reindexFoodIds.Clear();
 
         if (isFirstDistribution)
         {
@@ -567,21 +760,22 @@ public class MP_FoodSpawner : NetworkBehaviour
         }
         else
         {
-            emptySpawnRegions.Clear();
+            redistributionCandidates.Clear();
             for (int i = 0; i < spawnRegions.Count; i++)
                 if (spawnRegions[i].FoodCount < indexedMaxFoodPerGrid)
-                    emptySpawnRegions.Add(i);
+                    redistributionCandidates.Add(i);
 
-            while (unfinishedInitialFood > 0 && emptySpawnRegions.Count > 0)
+            while (unfinishedInitialFood > 0 && redistributionCandidates.Count > 0)
             {
-                int pick = UnityEngine.Random.Range(0, emptySpawnRegions.Count);
-                SpawnRegion region = spawnRegions[emptySpawnRegions[pick]];
+                int pick = UnityEngine.Random.Range(0, redistributionCandidates.Count);
+                SpawnRegion region = spawnRegions[redistributionCandidates[pick]];
                 int amount = Mathf.Min(unfinishedInitialFood, indexedMaxFoodPerGrid - region.FoodCount);
                 region.InitialRemaining = amount;
                 unfinishedInitialFood -= amount;
-                emptySpawnRegions[pick] = emptySpawnRegions[emptySpawnRegions.Count - 1];
-                emptySpawnRegions.RemoveAt(emptySpawnRegions.Count - 1);
+                redistributionCandidates[pick] = redistributionCandidates[redistributionCandidates.Count - 1];
+                redistributionCandidates.RemoveAt(redistributionCandidates.Count - 1);
             }
+            redistributionCandidates.Clear();
         }
 
         for (int i = 0; i < spawnRegions.Count; i++)
@@ -599,29 +793,70 @@ public class MP_FoodSpawner : NetworkBehaviour
         initialRegions.Enqueue(index);
     }
 
-    private void AddFoodToCell(MP_Food food, int cellIndex)
+    private void AddRecordToCell(uint foodId, int cellIndex)
     {
-        foodByCell[cellIndex] ??= new List<MP_Food>();
-        foodByCell[cellIndex].Add(food);
+        foodRecordIdsByCell[cellIndex] ??= new List<uint>(Mathf.Max(1, indexedMaxFoodPerGrid));
+        foodRecordIdsByCell[cellIndex].Add(foodId);
     }
 
-    private bool TrySpawnInitialFood(MP_GameBoundary boundary)
+    private int GetChunkIndex(int cellIndex) =>
+        (cellIndex / activeColumns / CellsPerChunk) * chunkColumns +
+        (cellIndex % activeColumns / CellsPerChunk);
+
+    private void AddRecordToChunk(uint foodId, int chunkIndex)
     {
-        return TrySpawnInitialFood(boundary, true) || TrySpawnInitialFood(boundary, false);
+        foodIdsByChunk[chunkIndex] ??= new List<uint>(CellsPerChunk * CellsPerChunk *
+            Mathf.Max(1, indexedMaxFoodPerGrid));
+        foodIdsByChunk[chunkIndex].Add(foodId);
+        MarkChunkDirty(chunkIndex);
     }
 
-    private bool TrySpawnInitialFood(MP_GameBoundary boundary, bool requireHidden)
+    private void MarkChunkDirty(int chunkIndex)
+    {
+        chunkVersions[chunkIndex]++;
+        dirtyChunks.Add(chunkIndex);
+    }
+
+    private void AddRegionToBucket(int regionIndex, int foodCount)
+    {
+        while (regionsByFoodCount.Count <= foodCount)
+            regionsByFoodCount.Add(new List<int>());
+
+        List<int> bucket = regionsByFoodCount[foodCount];
+        spawnRegions[regionIndex].BucketPosition = bucket.Count;
+        bucket.Add(regionIndex);
+    }
+
+    private void ChangeRegionFoodCount(int regionIndex, int change)
+    {
+        SpawnRegion region = spawnRegions[regionIndex];
+        List<int> oldBucket = regionsByFoodCount[region.FoodCount];
+        int lastIndex = oldBucket.Count - 1;
+        int movedRegionIndex = oldBucket[lastIndex];
+        oldBucket[region.BucketPosition] = movedRegionIndex;
+        spawnRegions[movedRegionIndex].BucketPosition = region.BucketPosition;
+        oldBucket.RemoveAt(lastIndex);
+
+        region.FoodCount += change;
+        AddRegionToBucket(regionIndex, region.FoodCount);
+    }
+
+    private bool TrySpawnInitialFood(MP_GameBoundary boundary, ref int regionChecksRemaining)
     {
         int regionsToTry = initialRegions.Count;
-        for (int regionAttempt = 0; regionAttempt < regionsToTry; regionAttempt++)
+        for (int regionAttempt = 0;
+             regionAttempt < regionsToTry && regionChecksRemaining > 0; regionAttempt++)
         {
             int regionIndex = initialRegions.Dequeue();
             SpawnRegion region = spawnRegions[regionIndex];
             region.IsQueued = false;
             if (region.InitialRemaining <= 0 || region.FoodCount >= indexedMaxFoodPerGrid)
+            {
+                regionChecksRemaining--;
                 continue;
+            }
 
-            if (TrySpawnInRegion(boundary, regionIndex, requireHidden))
+            if (TrySpawnInRegion(boundary, regionIndex, ref regionChecksRemaining))
             {
                 region.InitialRemaining--;
                 EnqueueInitialRegion(regionIndex);
@@ -634,92 +869,60 @@ public class MP_FoodSpawner : NetworkBehaviour
         return false;
     }
 
-    private bool TrySpawnReplacement(MP_GameBoundary boundary, Vector2 source)
+    private bool TrySpawnReplacement(MP_GameBoundary boundary, Vector2 source,
+        ref int regionChecksRemaining)
     {
         int sourceCell = GetCellIndex(source, indexedBoundaryCenter, indexedBoundarySize);
         int sourceRegion = cellRegionIndices[sourceCell];
 
-        if (TrySpawnInOtherRegion(boundary, sourceRegion, true, false) ||
-            TrySpawnInOtherRegion(boundary, sourceRegion, false, false))
+        if (TrySpawnInOtherRegion(boundary, sourceRegion, false, ref regionChecksRemaining))
             return true;
 
-        return TrySpawnInOtherRegion(boundary, sourceRegion, false, true) ||
-            TrySpawnInRegion(boundary, sourceRegion, false, true);
+        return TrySpawnInOtherRegion(boundary, sourceRegion, true,
+                   ref regionChecksRemaining) ||
+            (regionChecksRemaining > 0 && TrySpawnInRegion(boundary, sourceRegion,
+                ref regionChecksRemaining, true));
     }
 
-    private bool TrySpawnCycleFood(MP_GameBoundary boundary)
+    private bool TrySpawnCycleFood(MP_GameBoundary boundary, ref int regionChecksRemaining)
     {
-        return TrySpawnInOtherRegion(boundary, -1, true, false, false) ||
-            TrySpawnInOtherRegion(boundary, -1, false, false, false) ||
-            TrySpawnInOtherRegion(boundary, -1, false, true, false);
+        return TrySpawnInOtherRegion(boundary, -1, false,
+                   ref regionChecksRemaining, false) ||
+            TrySpawnInOtherRegion(boundary, -1, true,
+                ref regionChecksRemaining, false);
     }
 
     private bool TrySpawnInOtherRegion(MP_GameBoundary boundary, int sourceRegion,
-        bool requireHidden, bool allowOverCapacity, bool satisfyInitialTarget = true)
+        bool allowOverCapacity, ref int regionChecksRemaining,
+        bool satisfyInitialTarget = true)
     {
-        emptySpawnRegions.Clear();
-        partialSpawnRegions.Clear();
+        int bucketLimit = allowOverCapacity ? regionsByFoodCount.Count :
+            Mathf.Min(indexedMaxFoodPerGrid, regionsByFoodCount.Count);
+        for (int foodCount = 0;
+             foodCount < bucketLimit && regionChecksRemaining > 0; foodCount++)
+            if (TrySpawnFromBucket(boundary, regionsByFoodCount[foodCount], sourceRegion,
+                    allowOverCapacity, ref regionChecksRemaining, satisfyInitialTarget))
+                return true;
 
-        for (int i = 0; i < spawnRegions.Count; i++)
-        {
-            if (i == sourceRegion ||
-                (!allowOverCapacity && spawnRegions[i].FoodCount >= indexedMaxFoodPerGrid))
-                continue;
-
-            if (spawnRegions[i].FoodCount == 0)
-                emptySpawnRegions.Add(i);
-            else
-                partialSpawnRegions.Add(i);
-        }
-
-        return TrySpawnFromCandidates(boundary, emptySpawnRegions, requireHidden,
-            allowOverCapacity, satisfyInitialTarget) ||
-            TrySpawnFromCandidates(boundary, partialSpawnRegions, requireHidden,
-                allowOverCapacity, satisfyInitialTarget);
+        return false;
     }
 
-    private bool TrySpawnFromCandidates(MP_GameBoundary boundary, List<int> candidates,
-        bool requireHidden, bool allowOverCapacity, bool satisfyInitialTarget)
+    private bool TrySpawnFromBucket(MP_GameBoundary boundary, List<int> candidates,
+        int sourceRegion, bool allowOverCapacity, ref int regionChecksRemaining,
+        bool satisfyInitialTarget)
     {
-        if (ReferenceEquals(candidates, emptySpawnRegions))
+        if (candidates.Count == 0)
+            return false;
+
+        int start = UnityEngine.Random.Range(0, candidates.Count);
+        for (int i = 0; i < candidates.Count && regionChecksRemaining > 0; i++)
         {
-            for (int i = candidates.Count - 1; i > 0; i--)
-            {
-                int pick = UnityEngine.Random.Range(0, i + 1);
-                int selected = candidates[i];
-                candidates[i] = candidates[pick];
-                candidates[pick] = selected;
-            }
-        }
-        else
-        {
-            candidates.Sort((left, right) =>
-                spawnRegions[left].FoodCount.CompareTo(spawnRegions[right].FoodCount));
+            int regionIndex = candidates[(start + i) % candidates.Count];
+            if (regionIndex == sourceRegion)
+                continue;
 
-            int groupStart = 0;
-            while (groupStart < candidates.Count)
-            {
-                int groupEnd = groupStart + 1;
-                int foodCount = spawnRegions[candidates[groupStart]].FoodCount;
-                while (groupEnd < candidates.Count &&
-                    spawnRegions[candidates[groupEnd]].FoodCount == foodCount)
-                    groupEnd++;
-
-                for (int i = groupEnd - 1; i > groupStart; i--)
-                {
-                    int pick = UnityEngine.Random.Range(groupStart, i + 1);
-                    int selected = candidates[i];
-                    candidates[i] = candidates[pick];
-                    candidates[pick] = selected;
-                }
-
-                groupStart = groupEnd;
-            }
-        }
-
-        foreach (int regionIndex in candidates)
-        {
-            if (TrySpawnInRegion(boundary, regionIndex, requireHidden, allowOverCapacity))
+            if (TrySpawnInRegion(boundary, regionIndex, ref regionChecksRemaining,
+                    allowOverCapacity))
             {
                 SpawnRegion region = spawnRegions[regionIndex];
                 if (satisfyInitialTarget)
@@ -732,10 +935,12 @@ public class MP_FoodSpawner : NetworkBehaviour
     }
 
     private bool TrySpawnInRegion(MP_GameBoundary boundary, int regionIndex,
-        bool requireHidden, bool allowOverCapacity = false)
+        ref int regionChecksRemaining, bool allowOverCapacity = false)
     {
-        if (foodPrefab == null)
+        if (foodPrefab == null || regionChecksRemaining <= 0)
             return false;
+
+        regionChecksRemaining--;
 
         MP_CycleTimer timer = cycleTimer != null ? cycleTimer : MP_CycleTimer.Instance;
         int cycle = timer != null ? Mathf.Max(1, timer.CurrentCycle) : 1;
@@ -747,6 +952,10 @@ public class MP_FoodSpawner : NetworkBehaviour
             region.Bounds.width < radius * 2f || region.Bounds.height < radius * 2f)
             return false;
 
+        if (!IsOutsideAllPlayerViews(region.Bounds.center,
+                region.Bounds.size * 0.5f, radius))
+            return false;
+
         int attempts = placementAttemptsPerRegion > 0 ? placementAttemptsPerRegion : 8;
         for (int i = 0; i < attempts; i++)
         {
@@ -755,25 +964,27 @@ public class MP_FoodSpawner : NetworkBehaviour
                 UnityEngine.Random.Range(region.Bounds.yMin + radius, region.Bounds.yMax - radius)
             );
 
-            if (!IsClear(position, radius, boundary) ||
-                (requireHidden && !IsOutsideAllPlayerViews(position, radius)))
+            if (!IsClear(position, radius, boundary))
                 continue;
 
-            GameObject foodObject = Instantiate(foodPrefab, position, Quaternion.identity, transform);
-            MP_Food food = foodObject.GetComponent<MP_Food>();
-            if (food == null)
+            if (nextFoodId == 0)
             {
-                Debug.LogError($"Missing MP_Food on {foodObject.name}", this);
-                Destroy(foodObject);
+                Debug.LogError("Food record IDs have been exhausted", this);
                 return false;
             }
 
-            food.Initialize(this, cycle, sizeMultiplier, expMultiplier,
-                !IsOutsideAllPlayerViews(position, radius));
             int cellIndex = GetCellIndex(position, indexedBoundaryCenter, indexedBoundarySize);
-            liveFood.Add(food, new FoodRecord(position, radius));
-            AddFoodToCell(food, cellIndex);
-            spawnRegions[cellRegionIndices[cellIndex]].FoodCount++;
+            uint foodId = nextFoodId++;
+            double edibleAt = Time.realtimeSinceStartupAsDouble;
+            FoodRecord record = new(foodId, position, radius,
+                position + baseFoodHitOffset * sizeMultiplier,
+                baseFoodHitRadius * sizeMultiplier, cycle, sizeMultiplier,
+                baseFoodExperience * Mathf.Max(1f, expMultiplier), edibleAt,
+                false, cellIndex);
+            foodRecords.Add(foodId, record);
+            AddRecordToCell(foodId, cellIndex);
+            AddRecordToChunk(foodId, GetChunkIndex(cellIndex));
+            ChangeRegionFoodCount(cellRegionIndices[cellIndex], 1);
             largestFoodRadius = Mathf.Max(largestFoodRadius, radius);
             return true;
         }
@@ -793,13 +1004,16 @@ public class MP_FoodSpawner : NetworkBehaviour
 
     private float GetFoodRadius(float sizeMultiplier)
     {
-        CircleCollider2D collider = foodPrefab.GetComponent<CircleCollider2D>();
-        Vector3 scale = foodPrefab.transform.lossyScale;
-        float largestScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
-        return (collider.radius + collider.offset.magnitude) * largestScale * sizeMultiplier;
+        return baseFoodRadius * sizeMultiplier;
     }
 
     private bool IsOutsideAllPlayerViews(Vector2 position, float foodRadius)
+    {
+        return IsOutsideAllPlayerViews(position, Vector2.zero, foodRadius);
+    }
+
+    private bool IsOutsideAllPlayerViews(Vector2 position, Vector2 extent,
+        float foodRadius)
     {
         MP_PlayerManager playerManager = MP_PlayerManager.Instance;
         if (playerManager == null)
@@ -818,8 +1032,8 @@ public class MP_FoodSpawner : NetworkBehaviour
             float halfHeight = Mathf.Max(0.1f, cameraBaseOrthographicSize) * scale;
             float halfWidth = halfHeight * aspect;
             Vector2 offset = position - (Vector2)cloud.transform.position;
-            if (Mathf.Abs(offset.x) <= halfWidth + padding &&
-                Mathf.Abs(offset.y) <= halfHeight + padding)
+            if (Mathf.Abs(offset.x) <= halfWidth + padding + extent.x &&
+                Mathf.Abs(offset.y) <= halfHeight + padding + extent.y)
                 return false;
         }
 
@@ -846,13 +1060,13 @@ public class MP_FoodSpawner : NetworkBehaviour
         {
             for (int column = firstColumn; column <= lastColumn; column++)
             {
-                List<MP_Food> cell = foodByCell[row * activeColumns + column];
+                List<uint> cell = foodRecordIdsByCell[row * activeColumns + column];
                 if (cell == null)
                     continue;
 
-                foreach (MP_Food food in cell)
+                foreach (uint foodId in cell)
                 {
-                    FoodRecord record = liveFood[food];
+                    FoodRecord record = foodRecords[foodId];
                     float separation = radius + record.Radius + clearance;
                     if ((position - record.Position).sqrMagnitude < separation * separation)
                         return false;

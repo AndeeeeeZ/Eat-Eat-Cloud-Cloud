@@ -1676,7 +1676,7 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  cycleDurationSeconds: 10
+  cycleDurationSeconds: 30
   speedMultiplierPerCycle: 1.5
   foodSizeMultiplierPerCycle: 1.5
   foodExpMultiplierPerCycle: 1.1
@@ -2863,10 +2863,10 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   foodPrefab: {fileID: 4007046446493326648, guid: dedac876155424d498ce720971cb9d46, type: 3}
-  maxFoodPerGrid: 3
-  maxFoodSpawnsPerFrame: 300
-  foodAtCycleStart: 50
-  outdatedFoodDespawnsPerSecond: 50
+  maxFoodPerGrid: 5
+  maxFoodSpawnsPerFrame: 10000
+  foodAtCycleStart: 300
+  outdatedFoodDespawnsPerSecond: 300
   cameraBaseOrthographicSize: 5
   maximumClientAspectRatio: 3
   visibilityMargin: 4
