@@ -10,6 +10,7 @@ public class MP_Food : NetworkBehaviour
 
     private readonly SyncVar<float> spawnSizeMultiplier = new(1f);
     private readonly SyncVar<bool> retiring = new(false);
+    private readonly SyncVar<bool> fadeInOnSpawn = new(false);
     private MP_FoodSpawner foodSpawner;
     private Vector3 baseScale;
     private CircleCollider2D foodCollider;
@@ -17,6 +18,7 @@ public class MP_Food : NetworkBehaviour
     private Color[] baseColors;
     private float spawnExpMultiplier = 1f;
     private int spawnCycle = 1;
+    private bool isFadingIn;
     private float fadeInElapsed;
     private float fadeElapsed;
     private float fadeStartFraction = 1f;
@@ -65,6 +67,9 @@ public class MP_Food : NetworkBehaviour
         spawnSizeMultiplier.onChanged += ApplySizeMultiplier;
         retiring.onChanged -= HandleRetiringChanged;
         retiring.onChanged += HandleRetiringChanged;
+        fadeInOnSpawn.onChanged -= HandleFadeInChanged;
+        fadeInOnSpawn.onChanged += HandleFadeInChanged;
+        isFadingIn = false;
         ApplySizeMultiplier(spawnSizeMultiplier.value);
         HandleRetiringChanged(retiring.value);
     }
@@ -73,6 +78,7 @@ public class MP_Food : NetworkBehaviour
     {
         spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
         retiring.onChanged -= HandleRetiringChanged;
+        fadeInOnSpawn.onChanged -= HandleFadeInChanged;
         if (asServer && foodSpawner != null)
         {
             foodSpawner.UnregisterFood(this);
@@ -86,6 +92,7 @@ public class MP_Food : NetworkBehaviour
     {
         spawnSizeMultiplier.onChanged -= ApplySizeMultiplier;
         retiring.onChanged -= HandleRetiringChanged;
+        fadeInOnSpawn.onChanged -= HandleFadeInChanged;
         if (foodSpawner != null)
             foodSpawner.UnregisterFood(this);
 
@@ -98,26 +105,46 @@ public class MP_Food : NetworkBehaviour
     }
 
     public void Initialize(MP_FoodSpawner spawner, int cycle, float sizeMultiplier,
-        float expMultiplier)
+        float expMultiplier, bool visibleAtSpawn)
     {
         foodSpawner = spawner;
         spawnCycle = Mathf.Max(1, cycle);
         spawnExpMultiplier = Mathf.Max(1f, expMultiplier);
-        edibleAt = Time.realtimeSinceStartupAsDouble + Mathf.Max(0f, fadeInDuration);
+        edibleAt = Time.realtimeSinceStartupAsDouble +
+            (visibleAtSpawn ? Mathf.Max(0f, fadeInDuration) : 0f);
         if (foodCollider != null)
-            foodCollider.enabled = fadeInDuration <= 0f;
+            foodCollider.enabled = !visibleAtSpawn || fadeInDuration <= 0f;
+        fadeInOnSpawn.value = visibleAtSpawn;
         spawnSizeMultiplier.value = sizeMultiplier;
         ApplySizeMultiplier(sizeMultiplier);
     }
 
-    public void RetireIfOutdated(int currentCycle)
+    public void ExpireIfOutdated(int currentCycle)
     {
         if (!isServer || consumed || retiring.value || spawnCycle > currentCycle - 2)
             return;
 
-        retireAt = Time.realtimeSinceStartupAsDouble + Mathf.Max(0f, fadeOutDuration) +
-            Mathf.Max(0f, despawnGraceSeconds);
-        retiring.value = true;
+        consumed = true;
+        if (foodSpawner != null)
+        {
+            foodSpawner.RespawnFood(this);
+            foodSpawner = null;
+        }
+
+        Despawn();
+    }
+
+    private void HandleFadeInChanged(bool shouldFadeIn)
+    {
+        if (retiring.value)
+            return;
+
+        if (!shouldFadeIn && isFadingIn)
+            return;
+
+        isFadingIn = shouldFadeIn && fadeInDuration > 0f;
+        fadeInElapsed = 0f;
+        SetFade(isFadingIn ? 0f : 1f);
     }
 
     private void HandleRetiringChanged(bool isRetiring)
@@ -129,12 +156,12 @@ public class MP_Food : NetworkBehaviour
 
         if (isRetiring)
         {
+            isFadingIn = false;
             fadeStartFraction = currentFade;
         }
         else
         {
-            fadeInElapsed = 0f;
-            SetFade(fadeInDuration > 0f ? 0f : 1f);
+            HandleFadeInChanged(fadeInOnSpawn.value);
         }
     }
 
@@ -162,15 +189,20 @@ public class MP_Food : NetworkBehaviour
                 Despawn();
             }
         }
-        else if (!Application.isBatchMode && fadeInElapsed < fadeInDuration)
+        else if (!Application.isBatchMode && isFadingIn)
         {
             fadeInElapsed += Time.deltaTime;
             SetFade(Mathf.Clamp01(fadeInElapsed / fadeInDuration));
+            if (fadeInElapsed >= fadeInDuration)
+                isFadingIn = false;
         }
 
         if (isServer && !retiring.value && !consumed && foodCollider != null &&
             !foodCollider.enabled && Time.realtimeSinceStartupAsDouble >= edibleAt)
             foodCollider.enabled = true;
+
+        if (isServer && fadeInOnSpawn.value && Time.realtimeSinceStartupAsDouble >= edibleAt)
+            fadeInOnSpawn.value = false;
     }
 
     private void SetFade(float fraction)
@@ -201,12 +233,26 @@ public class MP_Food : NetworkBehaviour
         consumed = true;
         player.GainExperience(expAmount * spawnExpMultiplier);
 
+        bool fadeOut = foodSpawner != null && fadeOutDuration > 0f &&
+            foodSpawner.IsFoodVisibleToAnyPlayer(this);
+
         if (foodSpawner != null)
         {
             foodSpawner.RespawnFood(this);
             foodSpawner = null;
         }
 
-        Despawn();
+        if (fadeOut)
+        {
+            if (foodCollider != null)
+                foodCollider.enabled = false;
+            retireAt = Time.realtimeSinceStartupAsDouble + fadeOutDuration +
+                Mathf.Max(0f, despawnGraceSeconds);
+            retiring.value = true;
+        }
+        else
+        {
+            Despawn();
+        }
     }
 }

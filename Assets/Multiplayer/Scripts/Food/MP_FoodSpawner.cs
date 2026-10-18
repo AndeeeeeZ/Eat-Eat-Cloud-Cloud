@@ -49,6 +49,7 @@ public class MP_FoodSpawner : NetworkBehaviour
     [SerializeField, Min(1)] private int maxFoodPerGrid = 1;
     [SerializeField, Min(1)] private int maxFoodSpawnsPerFrame = 16;
     [SerializeField, Min(0)] private int foodAtCycleStart = 8;
+    [SerializeField, Min(1)] private int outdatedFoodDespawnsPerSecond = 50;
 
     [Header("Food Visibility")]
     [SerializeField, Min(0.1f)] private float cameraBaseOrthographicSize = 5f;
@@ -99,6 +100,8 @@ public class MP_FoodSpawner : NetworkBehaviour
     private int pendingCycleFood;
     private int lastScheduledCycle;
     private double nextFillAttemptAt;
+    private double outdatedFoodDespawnAllowance;
+    private double lastOutdatedFoodDespawnBudgetAt;
     private bool warnedNoSpawnPosition;
     private double nextVisibilityRefreshAt;
 
@@ -158,12 +161,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         double now = Time.realtimeSinceStartupAsDouble;
         int retirementBudget = maxFoodSpawnsPerFrame > 0 ? maxFoodSpawnsPerFrame : 16;
-        for (int i = 0; i < retirementBudget && retiringFood.Count > 0; i++)
-        {
-            MP_Food food = retiringFood.Dequeue();
-            if (food != null && food.isSpawned)
-                food.RetireIfOutdated(GetCurrentCycle());
-        }
+        DespawnOutdatedFood(now, retirementBudget);
 
         if (now >= nextFillAttemptAt)
         {
@@ -210,6 +208,8 @@ public class MP_FoodSpawner : NetworkBehaviour
             pendingCycleFood = 0;
             lastScheduledCycle = 0;
             nextFillAttemptAt = 0d;
+            outdatedFoodDespawnAllowance = 0d;
+            lastOutdatedFoodDespawnBudgetAt = 0d;
             warnedNoSpawnPosition = false;
             nextVisibilityRefreshAt = 0d;
             if (Instance == this)
@@ -284,6 +284,12 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         Vector2 offset = food.transform.position - session.Cloud.transform.position;
         return offset.sqrMagnitude <= radius * radius;
+    }
+
+    public bool IsFoodVisibleToAnyPlayer(MP_Food food)
+    {
+        return food != null && !IsOutsideAllPlayerViews(food.transform.position,
+            food.VisibilityRadius);
     }
 
     private float GetVisibilityRadius(MP_Player cloud)
@@ -366,6 +372,50 @@ public class MP_FoodSpawner : NetworkBehaviour
     {
         if (asServer)
             nearbyFoodByPlayer.Remove(player);
+    }
+
+    private void DespawnOutdatedFood(double now, int maxPerFrame)
+    {
+        double elapsed = lastOutdatedFoodDespawnBudgetAt > 0d ?
+            Math.Max(0d, now - lastOutdatedFoodDespawnBudgetAt) : 0d;
+        lastOutdatedFoodDespawnBudgetAt = now;
+        if (retiringFood.Count == 0)
+        {
+            outdatedFoodDespawnAllowance = 0d;
+            return;
+        }
+
+        int rate = Mathf.Max(1, outdatedFoodDespawnsPerSecond);
+        double allowanceCap = Math.Max(1d, Math.Min(maxPerFrame, rate * 0.1d));
+        outdatedFoodDespawnAllowance = Math.Min(allowanceCap,
+            outdatedFoodDespawnAllowance + elapsed * rate);
+        int allowedDespawns = (int)Math.Min(maxPerFrame, Math.Floor(outdatedFoodDespawnAllowance));
+        if (allowedDespawns == 0)
+            return;
+
+        int candidatesToCheck = Mathf.Min(maxPerFrame, retiringFood.Count);
+        int despawned = 0;
+        int currentCycle = GetCurrentCycle();
+        for (int i = 0; i < candidatesToCheck && despawned < allowedDespawns; i++)
+        {
+            MP_Food food = retiringFood.Dequeue();
+            if (food == null || !food.isSpawned || food.IsRetiring ||
+                food.SpawnCycle > currentCycle - 2)
+                continue;
+
+            if (IsFoodVisibleToAnyPlayer(food))
+            {
+                retiringFood.Enqueue(food);
+                continue;
+            }
+
+            food.ExpireIfOutdated(currentCycle);
+            outdatedFoodDespawnAllowance -= 1d;
+            despawned++;
+        }
+
+        if (despawned == 0)
+            outdatedFoodDespawnAllowance = 0d;
     }
 
     private void HandleCycleChanged(int cycle)
@@ -718,7 +768,8 @@ public class MP_FoodSpawner : NetworkBehaviour
                 return false;
             }
 
-            food.Initialize(this, cycle, sizeMultiplier, expMultiplier);
+            food.Initialize(this, cycle, sizeMultiplier, expMultiplier,
+                !IsOutsideAllPlayerViews(position, radius));
             int cellIndex = GetCellIndex(position, indexedBoundaryCenter, indexedBoundarySize);
             liveFood.Add(food, new FoodRecord(position, radius));
             AddFoodToCell(food, cellIndex);
