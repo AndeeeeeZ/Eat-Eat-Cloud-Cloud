@@ -1680,7 +1680,7 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  cycleDurationSeconds: 5
+  cycleDurationSeconds: 60
   finalCycle: 5
   speedMultiplierPerCycle: 1.6
   foodSizeMultiplierPerCycle: 2
@@ -2682,8 +2682,8 @@ Camera:
   m_GameObject: {fileID: 1678734119}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -2870,12 +2870,10 @@ MonoBehaviour:
   foodPrefab: {fileID: 4007046446493326648, guid: dedac876155424d498ce720971cb9d46, type: 3}
   maxFoodPerGrid: 5
   maxFoodSpawnsPerFrame: 10000
-  foodAtCycleStart: 300
-  outdatedFoodDespawnsPerSecond: 300
+  outdatedFoodTransitionsPerSecond: 10000
   cameraBaseOrthographicSize: 5
   maximumClientAspectRatio: 3
-  visibilityMargin: 4
-  visibilityExitPadding: 2
+  visibilityPadding: 1.5
   visibilityRefreshInterval: 0.25
   columns: 64
   rows: 64
