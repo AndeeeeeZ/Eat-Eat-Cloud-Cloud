@@ -385,14 +385,16 @@ MonoBehaviour:
   _directChildren: []
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
-  enemyName: AI
+  enemyName: Bot
   startingExperience: 0
-  detectionRadius: 8
+  assumedCameraAspectRatio: 1.7777778
   decisionInterval: 0.25
-  movementSpeedMultiplier: 0.85
-  chaseDurationSeconds: 3
-  wanderInterval: 2
-  wanderDistance: 5
+  movementSpeedMultiplier: 0.75
+  turnSpeedDegreesPerSecond: 180
+  chaseDurationSeconds: 5
+  targetSwitchPauseSeconds: 1
+  foodEatenBeforePause: 2
+  postEatPauseSeconds: 3
 --- !u!1 &3106172032961018613
 GameObject:
   m_ObjectHideFlags: 0

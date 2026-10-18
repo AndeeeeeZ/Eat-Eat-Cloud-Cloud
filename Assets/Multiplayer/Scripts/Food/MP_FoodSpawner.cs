@@ -158,6 +158,41 @@ public class MP_FoodSpawner : NetworkBehaviour
     public static MP_FoodSpawner Instance { get; private set; }
     public int ActiveFoodCount => foodRecords.Count;
 
+    public Vector2 GetCameraViewExtents(float cloudScale, float aspect)
+    {
+        float halfHeight = Mathf.Max(0.1f, cameraBaseOrthographicSize) *
+            Mathf.Max(1f, cloudScale);
+        float clampedAspect = Mathf.Clamp(aspect, 0.5f,
+            Mathf.Max(1f, maximumClientAspectRatio));
+        return new Vector2(halfHeight * clampedAspect, halfHeight);
+    }
+
+    public bool TryGetNearestFoodInView(Vector2 center, Vector2 viewExtents,
+        out Vector2 foodPosition)
+    {
+        foodPosition = default;
+        if (!isServer || !isSpawned || viewExtents.x <= 0f || viewExtents.y <= 0f)
+            return false;
+
+        float nearestDistanceSquared = float.MaxValue;
+        foreach (FoodRecord record in foodRecords.Values)
+        {
+            Vector2 offset = record.HitCenter - center;
+            if (Mathf.Abs(offset.x) > viewExtents.x ||
+                Mathf.Abs(offset.y) > viewExtents.y)
+                continue;
+
+            float distanceSquared = offset.sqrMagnitude;
+            if (distanceSquared >= nearestDistanceSquared)
+                continue;
+
+            nearestDistanceSquared = distanceSquared;
+            foodPosition = record.HitCenter;
+        }
+
+        return nearestDistanceSquared < float.MaxValue;
+    }
+
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
@@ -379,7 +414,7 @@ public class MP_FoodSpawner : NetworkBehaviour
     }
 
     public void ConsumeFoodAlongPath(MP_Player player, MP_PlayerGrowth growth,
-        CircleCollider2D body, Vector2 from, Vector2 to)
+        CircleCollider2D body, Vector2 from, Vector2 to, MP_EnemyAI enemyAI)
     {
         if (!isServer || !isSpawned || player == null || !player.IsAlive ||
             growth == null || body == null || !body.enabled || foodRecordIdsByCell == null ||
@@ -434,6 +469,7 @@ public class MP_FoodSpawner : NetworkBehaviour
                     RemoveFoodRecord(record);
                     QueueReplacement(record);
                     growth.GainExperience(record.Experience);
+                    enemyAI?.RecordFoodEaten();
                 }
             }
         }
@@ -454,10 +490,9 @@ public class MP_FoodSpawner : NetworkBehaviour
 
     private Vector2 GetViewExtents(PlayerID player, MP_Player cloud, float padding)
     {
-        float scale = Mathf.Max(1f, cloud.transform.localScale.x);
-        float halfHeight = Mathf.Max(0.1f, cameraBaseOrthographicSize) * scale;
-        return new Vector2(halfHeight * GetClientAspect(player) + padding,
-            halfHeight + padding);
+        Vector2 extents = GetCameraViewExtents(cloud.transform.localScale.x,
+            GetClientAspect(player));
+        return extents + Vector2.one * padding;
     }
 
     private void RefreshFoodChunks()

@@ -57,6 +57,6 @@ public class MP_PlayerMovement : NetworkBehaviour
         MP_FoodSpawner foodSpawner = MP_FoodSpawner.Instance;
         if (foodSpawner != null && player != null && player.IsAlive)
             foodSpawner.ConsumeFoodAlongPath(player, playerGrowth, bodyCollider,
-                previousPosition, nextPosition);
+                previousPosition, nextPosition, enemyAI);
     }
 }
