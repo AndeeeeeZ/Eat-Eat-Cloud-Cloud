@@ -76,7 +76,7 @@ public class MP_LeaderboardUI : MonoBehaviour
         // Search the complete snapshot so a player below the top few still sees their rank
         for (int i = 0; i < entries.Count; i++)
         {
-            if (entries[i].PlayerId != localPlayer.owner.Value)
+            if (entries[i].IsAI || entries[i].PlayerId != localPlayer.owner.Value)
                 continue;
 
             localPlayerRankText.text = $"You: #{i + 1} / {entries.Count}  {entries[i].TotalExp:0} XP";

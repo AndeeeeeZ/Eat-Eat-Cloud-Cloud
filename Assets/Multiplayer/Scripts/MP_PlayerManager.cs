@@ -32,13 +32,17 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     }
 
     private readonly Dictionary<PlayerID, PlayerSession> sessions = new();
-    // Populated on the server only. PlayerCount continues to count living clouds
+    // Populated on the server only. Counts include living AI clouds
     public IReadOnlyDictionary<PlayerID, PlayerSession> Sessions => sessions;
     private NetworkManager sessionNetworkManager;
 
     public event Action<int> OnPlayerCountChanged;
+    public event Action<int> OnAIPlayerCountChanged;
     private readonly SyncVar<int> playerCount = new(0);
+    private readonly SyncVar<int> aiPlayerCount = new(0);
     public int PlayerCount => playerCount.value;
+    public int AIPlayerCount => aiPlayerCount.value;
+    public int HumanPlayerCount => playerCount.value - aiPlayerCount.value;
 
     private void Awake()
     {
@@ -51,6 +55,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         Instance = this;
 
         playerCount.onChanged += HandlePlayerCountChange; 
+        aiPlayerCount.onChanged += HandleAIPlayerCountChange;
 
         if (spawnPointsSource != null)
         {
@@ -64,6 +69,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         base.OnDestroy();
 
         playerCount.onChanged -= HandlePlayerCountChange; 
+        aiPlayerCount.onChanged -= HandleAIPlayerCountChange;
 
         if (spawnPointsSource != null)
         {
@@ -107,6 +113,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         pendingClouds.Clear();
         nextRespawnPoint = 0;
         playerCount.value = 0;
+        aiPlayerCount.value = 0;
     }
 
     private void HandlePlayerJoined(PlayerID player, bool isReconnect, bool asServer)
@@ -155,6 +162,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         {
             players.Add(player.Stats);
             playerCount.value++;
+            if (player.GetComponent<MP_EnemyAI>() != null)
+                aiPlayerCount.value++;
         }
         else
         {
@@ -185,12 +194,19 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         if (players.Remove(player.Stats))
         {
             playerCount.value--;
+            if (player.GetComponent<MP_EnemyAI>() != null)
+                aiPlayerCount.value--;
         }
     }
 
     private void HandlePlayerCountChange(int newCount)
     {
         OnPlayerCountChanged?.Invoke(newCount); 
+    }
+
+    private void HandleAIPlayerCountChange(int newCount)
+    {
+        OnAIPlayerCountChanged?.Invoke(newCount);
     }
 
     public void NotifyPlayerDeath(PlayerID player, string killerName)
@@ -241,7 +257,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             return;
         }
 
-        if (!TryFindSafeSpawn(out SpawnPoint spawn))
+        if (!TryFindSafeSpawn(playerPrefab, out SpawnPoint spawn))
         {
             ReceiveRespawnFailure(info.sender, "No safe space is available inside the game boundary.");
             return;
@@ -276,10 +292,35 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             MP_LocalPlayerManager.Instance.HandleRespawnFailure(message);
     }
 
+    public bool TrySpawnEnemy(MP_Player enemyPrefab)
+    {
+        if (!isServer || !isSpawned || enemyPrefab == null ||
+            enemyPrefab.GetComponent<MP_EnemyAI>() == null)
+            return false;
+
+        if (!TryFindSafeSpawn(enemyPrefab, out SpawnPoint spawn))
+            return false;
+
+        GameObject cloud = null;
+        try
+        {
+            cloud = UnityProxy.Instantiate(enemyPrefab.gameObject, spawn.position,
+                spawn.rotation, gameObject.scene);
+            TrackPendingCloud(cloud);
+            return true;
+        }
+        catch
+        {
+            if (cloud != null)
+                UnityProxy.Destroy(cloud);
+            throw;
+        }
+    }
+
     // PurrNet's default spawner uses the same selection for initial joins
     public SpawnPoint NextSpawnPoint(PlayerID player, SceneID scene)
     {
-        if (TryFindSafeSpawn(out SpawnPoint spawn))
+        if (TryFindSafeSpawn(playerPrefab, out SpawnPoint spawn))
             return spawn;
 
         Debug.LogWarning("No clear player spawn was found inside the game boundary", this);
@@ -303,13 +344,13 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             pendingClouds.Add(player);
     }
 
-    private bool TryFindSafeSpawn(out SpawnPoint spawn)
+    private bool TryFindSafeSpawn(MP_Player prefab, out SpawnPoint spawn)
     {
         spawn = default;
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         if (boundary == null)
         {
-            Debug.LogError("Add MP_GameBoundary to the scene before spawning players", this);
+            Debug.LogError("Add MP_GameBoundary to the scene before spawning clouds", this);
             return false;
         }
 
@@ -332,7 +373,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
                 AddOccupiedSpace(player);
         }
 
-        float radius = GetColliderRadius(playerPrefab);
+        float radius = GetColliderRadius(prefab);
         float clearance = Mathf.Max(0f, spawnClearance);
         float margin = radius + clearance;
         if (!boundary.CanFit(margin))
@@ -359,7 +400,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             boundary.TryGetRandomPosition(margin, out Vector2 position);
             if (MP_SpawnSafety.IsClear(position, radius, clearance, occupiedSpaces))
             {
-                spawn = new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
+                spawn = new SpawnPoint { position = position, rotation = prefab.transform.rotation };
                 return true;
             }
         }

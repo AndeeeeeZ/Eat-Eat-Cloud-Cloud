@@ -8,6 +8,7 @@ public class MP_PlayerMovement : NetworkBehaviour
 {
     [SerializeField] private FloatValue baseMoveSpeed;
     private MP_PlayerInput playerInput;
+    private MP_EnemyAI enemyAI;
     private MP_Player player;
     private MP_PlayerGrowth playerGrowth;
     private CircleCollider2D bodyCollider;
@@ -15,6 +16,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     private void Awake()
     {
         playerInput = GetComponent<MP_PlayerInput>(); 
+        enemyAI = GetComponent<MP_EnemyAI>();
         player = GetComponent<MP_Player>();
         playerGrowth = GetComponent<MP_PlayerGrowth>();
         bodyCollider = GetComponent<CircleCollider2D>();
@@ -26,10 +28,14 @@ public class MP_PlayerMovement : NetworkBehaviour
             return;
 
         Vector2 previousPosition = transform.position;
-        Vector2 direction = playerInput.MovementInput;
+        Vector2 direction = enemyAI != null
+            ? enemyAI.GetMovementDirection()
+            : playerInput.MovementInput;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         float speedMultiplier = timer != null ? timer.SpeedMultiplier : 1f;
+        if (enemyAI != null)
+            speedMultiplier *= enemyAI.MovementSpeedMultiplier;
         Vector3 nextPosition = transform.position +
             (Vector3)(direction * baseMoveSpeed.Value * speedMultiplier * Time.fixedDeltaTime);
         MP_GameBoundary boundary = MP_GameBoundary.Instance;

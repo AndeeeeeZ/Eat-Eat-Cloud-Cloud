@@ -48,6 +48,16 @@ public class MP_CycleTimer : NetworkBehaviour
         if (!asServer)
             return;
 
+        currentCycle.value = 0;
+        secondsRemaining.value = 0;
+        speedMultiplier.value = 1f;
+        foodSizeMultiplier.value = 1f;
+        foodExpMultiplier.value = 1f;
+        nextCycleAt = 0d;
+    }
+
+    private void StartFirstCycle()
+    {
         BeginCycle(1);
         if (currentCycle.value >= FinalCycle)
         {
@@ -62,7 +72,18 @@ public class MP_CycleTimer : NetworkBehaviour
 
     private void Update()
     {
-        if (!isServer || !isSpawned || currentCycle.value == 0 || currentCycle.value >= FinalCycle)
+        if (!isServer || !isSpawned)
+            return;
+
+        if (currentCycle.value == 0)
+        {
+            MP_PlayerManager manager = MP_PlayerManager.Instance;
+            if (manager != null && manager.HumanPlayerCount > 0)
+                StartFirstCycle();
+            return;
+        }
+
+        if (currentCycle.value >= FinalCycle)
             return;
 
         double now = Time.realtimeSinceStartupAsDouble;

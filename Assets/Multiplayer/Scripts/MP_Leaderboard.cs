@@ -7,26 +7,33 @@ using UnityEngine;
 public struct MP_LeaderboardEntry : IPackedAuto, IEquatable<MP_LeaderboardEntry>
 {
     public PlayerID PlayerId;
+    public ulong ObjectId;
+    public bool IsAI;
     public string PlayerName;
     public float TotalExp;
 
-    public MP_LeaderboardEntry(PlayerID playerId, string playerName, float totalExp)
+    public MP_LeaderboardEntry(PlayerID playerId, ulong objectId, bool isAI,
+        string playerName, float totalExp)
     {
         PlayerId = playerId;
+        ObjectId = objectId;
+        IsAI = isAI;
         PlayerName = playerName;
         TotalExp = totalExp;
     }
 
     public bool Equals(MP_LeaderboardEntry other)
     {
-        return PlayerId == other.PlayerId && PlayerName == other.PlayerName && TotalExp.Equals(other.TotalExp);
+        return PlayerId == other.PlayerId && ObjectId == other.ObjectId &&
+            IsAI == other.IsAI && PlayerName == other.PlayerName &&
+            TotalExp.Equals(other.TotalExp);
     }
 
     public static int CompareRank(MP_LeaderboardEntry first, MP_LeaderboardEntry second)
     {
         int scoreOrder = second.TotalExp.CompareTo(first.TotalExp);
         // Stable tie order so equal scores do not swap places between updates
-        return scoreOrder != 0 ? scoreOrder : first.PlayerId.id.value.CompareTo(second.PlayerId.id.value);
+        return scoreOrder != 0 ? scoreOrder : first.ObjectId.CompareTo(second.ObjectId);
     }
 }
 
@@ -104,10 +111,16 @@ public class MP_Leaderboard : NetworkBehaviour
                 continue;
 
             MP_Player player = stats.GetComponent<MP_Player>();
-            if (player == null || !player.IsAlive || !player.owner.HasValue)
+            if (player == null || !player.IsAlive)
                 continue;
 
-            workingEntries.Add(new MP_LeaderboardEntry(player.owner.Value, stats.PlayerName, stats.TotalExp));
+            bool isAI = player.GetComponent<MP_EnemyAI>() != null;
+            if (!isAI && !player.owner.HasValue)
+                continue;
+
+            PlayerID owner = player.owner.GetValueOrDefault();
+            workingEntries.Add(new MP_LeaderboardEntry(owner, player.objectId,
+                isAI, stats.PlayerName, stats.TotalExp));
         }
 
         workingEntries.Sort(MP_LeaderboardEntry.CompareRank);
