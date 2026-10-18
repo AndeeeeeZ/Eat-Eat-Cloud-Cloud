@@ -7,11 +7,13 @@ public class MP_CycleTimer : NetworkBehaviour
     [SerializeField, Min(1f)] private float cycleDurationSeconds = 60f;
     [SerializeField, Min(1f)] private float speedMultiplierPerCycle = 1.1f;
     [SerializeField, Min(1f)] private float foodSizeMultiplierPerCycle = 1.1f;
+    [SerializeField, Min(1f)] private float foodExpMultiplierPerCycle = 1.1f;
 
     private readonly SyncVar<int> currentCycle = new(0);
     private readonly SyncVar<int> secondsRemaining = new(0);
     private readonly SyncVar<float> speedMultiplier = new(1f);
     private readonly SyncVar<float> foodSizeMultiplier = new(1f);
+    private readonly SyncVar<float> foodExpMultiplier = new(1f);
     private double nextCycleAt;
 
     public static MP_CycleTimer Instance { get; private set; }
@@ -19,6 +21,7 @@ public class MP_CycleTimer : NetworkBehaviour
     public int SecondsRemaining => isSpawned ? secondsRemaining.value : 0;
     public float SpeedMultiplier => isSpawned ? speedMultiplier.value : 1f;
     public float FoodSizeMultiplier => isSpawned ? foodSizeMultiplier.value : 1f;
+    public float FoodExpMultiplier => isSpawned ? foodExpMultiplier.value : 1f;
 
     public event Action<int> OnCycleChanged;
     public event Action<int> OnSecondsRemainingChanged;
@@ -71,6 +74,7 @@ public class MP_CycleTimer : NetworkBehaviour
     {
         speedMultiplier.value = Mathf.Pow(Mathf.Max(1f, speedMultiplierPerCycle), cycle - 1);
         foodSizeMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodSizeMultiplierPerCycle), cycle - 1);
+        foodExpMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodExpMultiplierPerCycle), cycle - 1);
         currentCycle.value = cycle;
     }
 
