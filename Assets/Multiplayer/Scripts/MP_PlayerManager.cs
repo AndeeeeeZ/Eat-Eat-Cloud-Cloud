@@ -327,7 +327,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         Vector3 position = playerPrefab.transform.position;
         if (boundary != null)
-            position = boundary.ClampPosition(position, GetColliderRadius(playerPrefab));
+            position = boundary.ClampPosition(position);
 
         return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
     }
@@ -375,8 +375,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
         float radius = GetColliderRadius(prefab);
         float clearance = Mathf.Max(0f, spawnClearance);
-        float margin = radius + clearance;
-        if (!boundary.CanFit(margin))
+        if (!boundary.CanFit(0f))
             return false;
 
         if (spawnPointsSource != null)
@@ -386,7 +385,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             {
                 Transform point = points[nextRespawnPoint % points.Count];
                 nextRespawnPoint = (nextRespawnPoint + 1) % points.Count;
-                if (point != null && boundary.Contains(point.position, margin) &&
+                if (point != null && boundary.Contains(point.position) &&
                     MP_SpawnSafety.IsClear(point.position, radius, clearance, occupiedSpaces))
                 {
                     spawn = new SpawnPoint { position = point.position, rotation = point.rotation };
@@ -397,7 +396,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
         for (int i = 0; i < Mathf.Max(1, spawnSearchAttempts); i++)
         {
-            boundary.TryGetRandomPosition(margin, out Vector2 position);
+            boundary.TryGetRandomPosition(0f, out Vector2 position);
             if (MP_SpawnSafety.IsClear(position, radius, clearance, occupiedSpaces))
             {
                 spawn = new SpawnPoint { position = position, rotation = prefab.transform.rotation };

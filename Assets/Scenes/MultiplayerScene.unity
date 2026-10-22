@@ -592,7 +592,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _playerPrefab: {fileID: 993116790442422127, guid: 6e6509d40062c3d458170c64d7b94b52, type: 3}
   _ignoreNetworkRules: 0
-  spawnPoints: []
+  spawnPoints:
+  - {fileID: 400282084}
+  - {fileID: 1811265551}
+  - {fileID: 2027732388}
+  - {fileID: 458946110}
+  - {fileID: 1076334262}
+  - {fileID: 1740542103}
+  - {fileID: 470809929}
+  - {fileID: 2073298523}
+  - {fileID: 1826192617}
+  - {fileID: 883555452}
+  - {fileID: 499075177}
+  - {fileID: 120720645}
+  - {fileID: 391773753}
+  - {fileID: 1526626365}
+  - {fileID: 914719305}
 --- !u!4 &171673887
 Transform:
   m_ObjectHideFlags: 0
@@ -879,15 +894,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_Color.b
-      value: 0.047169805
+      value: 0.254717
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_Color.g
-      value: 0.047169805
+      value: 0.254717
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_Color.r
-      value: 0.047169805
+      value: 0.254717
       objectReference: {fileID: 0}
     - target: {fileID: -7871556540511652807, guid: 33a5317684b03694389d0abbe385ab6b, type: 3}
       propertyPath: m_SortingOrder
@@ -1896,7 +1911,7 @@ MonoBehaviour:
   cycleDurationSeconds: 60
   finalCycle: 6
   speedMultiplierPerCycle: 1.6
-  foodSizeMultiplierPerCycle: 2.3
+  foodSizeMultiplierPerCycle: 2.1
   foodExpMultiplierPerCycle: 2.5
 --- !u!1 &1053914653
 GameObject:
@@ -4213,7 +4228,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _automaticCloudSetups:
     _adaptToEdgegap: 1
-  _serverPort: 5001
+  _serverPort: 7777
   _maxConnections: 100
   _forceIpv4: 0
   _address: 98.87.150.200
@@ -4282,8 +4297,8 @@ MonoBehaviour:
   size: {x: 900, y: 900}
   showBoundaryGizmo: 1
   showBoundaryInGame: 1
-  boundaryLineWidth: 0.1
-  boundaryColor: {r: 0, g: 1, b: 1, a: 1}
+  boundaryLineWidth: 0.5
+  boundaryColor: {r: 0.19237275, g: 0.31132078, b: 0.31132078, a: 1}
   boundarySortingOrder: 100
 --- !u!4 &2136652902
 Transform:

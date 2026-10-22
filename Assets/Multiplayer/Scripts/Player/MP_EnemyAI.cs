@@ -38,16 +38,19 @@ public class MP_EnemyAI : NetworkBehaviour
     private MP_Player player;
     private MP_PlayerStats stats;
     private MP_PlayerGrowth growth;
-    private CircleCollider2D bodyCollider;
     private MP_Player target;
     private MP_Player recentlyChasedTarget;
+    private MP_Player fleeWallTarget;
     private Vector2 foodDestination;
     private Vector2 currentDirection;
+    private Vector2 wanderDirection;
+    private Vector2 fleeWallDirection;
     private double nextDecisionAt;
     private double chaseEndsAt;
     private double recentlyChasedTargetAvailableAt;
     private double nextHuntAt;
     private double nextFoodSearchAt;
+    private double nextWanderTurnAt;
     private bool fleeing;
     private bool hasFoodDestination;
     private bool startingExperienceApplied;
@@ -61,7 +64,6 @@ public class MP_EnemyAI : NetworkBehaviour
         player = GetComponent<MP_Player>();
         stats = GetComponent<MP_PlayerStats>();
         growth = GetComponent<MP_PlayerGrowth>();
-        bodyCollider = GetComponent<CircleCollider2D>();
     }
 
     protected override void OnSpawned(bool asServer)
@@ -73,13 +75,17 @@ public class MP_EnemyAI : NetworkBehaviour
         SelectPreset();
         target = null;
         recentlyChasedTarget = null;
+        fleeWallTarget = null;
         nextDecisionAt = 0d;
         foodDestination = default;
         currentDirection = Vector2.zero;
+        wanderDirection = Vector2.zero;
+        fleeWallDirection = Vector2.zero;
         chaseEndsAt = 0d;
         recentlyChasedTargetAvailableAt = 0d;
         nextHuntAt = 0d;
         nextFoodSearchAt = 0d;
+        nextWanderTurnAt = 0d;
         fleeing = false;
         hasFoodDestination = false;
         startingExperienceApplied = false;
@@ -96,10 +102,14 @@ public class MP_EnemyAI : NetworkBehaviour
         {
             target = null;
             recentlyChasedTarget = null;
+            fleeWallTarget = null;
             hasFoodDestination = false;
             currentDirection = Vector2.zero;
+            wanderDirection = Vector2.zero;
+            fleeWallDirection = Vector2.zero;
             nextHuntAt = 0d;
             nextFoodSearchAt = 0d;
+            nextWanderTurnAt = 0d;
         }
 
         base.OnDespawned(asServer);
@@ -240,11 +250,27 @@ public class MP_EnemyAI : NetworkBehaviour
         if (target != null)
         {
             Vector2 offset = (Vector2)target.transform.position - (Vector2)transform.position;
-            return SmoothDirection((fleeing ? -offset : offset).normalized);
+            if (fleeing)
+            {
+                Vector2 escapeDirection = GetFleeDirection(offset);
+                if (fleeWallDirection.sqrMagnitude > 0f)
+                {
+                    currentDirection = escapeDirection;
+                    return escapeDirection;
+                }
+
+                return SmoothDirection(escapeDirection);
+            }
+
+            fleeWallTarget = null;
+            fleeWallDirection = Vector2.zero;
+            return SmoothDirection(offset.normalized);
         }
 
+        fleeWallTarget = null;
+        fleeWallDirection = Vector2.zero;
         if (now < nextFoodSearchAt)
-            return SmoothDirection(Vector2.zero);
+            return SmoothDirection(GetWanderDirection(now));
 
         if (hasFoodDestination)
         {
@@ -253,7 +279,7 @@ public class MP_EnemyAI : NetworkBehaviour
                 return SmoothDirection(toFood.normalized);
         }
 
-        return SmoothDirection(GetFallbackDirection());
+        return SmoothDirection(GetFallbackDirection(currentDirection));
     }
 
     public void RecordFoodEaten()
@@ -266,40 +292,106 @@ public class MP_EnemyAI : NetworkBehaviour
         nextHuntAt = System.Math.Max(nextHuntAt, pauseEndsAt);
         nextFoodSearchAt = System.Math.Max(nextFoodSearchAt, pauseEndsAt);
         target = null;
+        fleeWallTarget = null;
+        fleeWallDirection = Vector2.zero;
         fleeing = false;
         hasFoodDestination = false;
+        wanderDirection = Vector2.zero;
+        nextWanderTurnAt = 0d;
         nextDecisionAt = 0d;
     }
 
-    private Vector2 GetFallbackDirection()
+    private Vector2 GetWanderDirection(double now)
     {
-        if (currentDirection.sqrMagnitude < 0.0001f)
+        if (now >= nextWanderTurnAt)
         {
-            currentDirection = Random.insideUnitCircle.normalized;
-            if (currentDirection.sqrMagnitude < 0.0001f)
-                currentDirection = Vector2.right;
+            wanderDirection = Random.insideUnitCircle.normalized;
+            nextWanderTurnAt = now + Random.Range(0.75f, 1.5f);
+        }
+
+        wanderDirection = GetFallbackDirection(wanderDirection);
+        return wanderDirection;
+    }
+
+    private Vector2 GetFleeDirection(Vector2 offset)
+    {
+        Vector2 away = -offset.normalized;
+        if (fleeWallTarget != target)
+        {
+            fleeWallTarget = target;
+            fleeWallDirection = Vector2.zero;
         }
 
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         if (boundary == null)
-            return currentDirection;
+            return away;
 
-        float radius = 0f;
-        if (bodyCollider != null)
+        const float wallDistance = 0.25f;
+        Vector2 position = transform.position;
+        Vector2 minimum = boundary.Center - boundary.Size * 0.5f;
+        Vector2 maximum = boundary.Center + boundary.Size * 0.5f;
+        bool blockedX = (away.x < 0f && position.x <= minimum.x + wallDistance) ||
+            (away.x > 0f && position.x >= maximum.x - wallDistance);
+        bool blockedY = (away.y < 0f && position.y <= minimum.y + wallDistance) ||
+            (away.y > 0f && position.y >= maximum.y - wallDistance);
+        if (!blockedX && !blockedY)
         {
-            Vector3 scale = bodyCollider.transform.lossyScale;
-            radius = bodyCollider.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
-            radius += Vector2.Distance(bodyCollider.transform.TransformPoint(bodyCollider.offset),
-                transform.position);
+            fleeWallDirection = Vector2.zero;
+            return away;
         }
 
-        Vector2 projected = (Vector2)transform.position + currentDirection *
-            Mathf.Max(1f, radius);
-        Vector3 clamped = boundary.ClampPosition(projected, radius);
-        Vector2 direction = currentDirection;
-        if (Mathf.Abs(projected.x - clamped.x) > 0.001f)
+        Vector2 available = new Vector2(blockedX ? 0f : away.x,
+            blockedY ? 0f : away.y);
+        bool wallDirectionBlocked =
+            (fleeWallDirection.x < 0f && position.x <= minimum.x + wallDistance) ||
+            (fleeWallDirection.x > 0f && position.x >= maximum.x - wallDistance) ||
+            (fleeWallDirection.y < 0f && position.y <= minimum.y + wallDistance) ||
+            (fleeWallDirection.y > 0f && position.y >= maximum.y - wallDistance);
+        if (wallDirectionBlocked)
+            fleeWallDirection = Vector2.zero;
+        else if (fleeWallDirection.sqrMagnitude > 0f &&
+            Vector2.Dot(available, fleeWallDirection) <= 0f)
+            return fleeWallDirection;
+
+        if (available.sqrMagnitude > 0.0001f)
+            fleeWallDirection = available.normalized;
+        else if (blockedX && blockedY)
+            fleeWallDirection = Mathf.Abs(offset.x) >= Mathf.Abs(offset.y)
+                ? new Vector2(0f, -Mathf.Sign(away.y))
+                : new Vector2(-Mathf.Sign(away.x), 0f);
+        else if (blockedX)
+            fleeWallDirection = new Vector2(0f,
+                Mathf.Sign(Mathf.Abs(currentDirection.y) > 0.01f
+                    ? currentDirection.y : boundary.Center.y - position.y));
+        else
+            fleeWallDirection = new Vector2(
+                Mathf.Sign(Mathf.Abs(currentDirection.x) > 0.01f
+                    ? currentDirection.x : boundary.Center.x - position.x), 0f);
+
+        return fleeWallDirection;
+    }
+
+    private Vector2 GetFallbackDirection(Vector2 direction)
+    {
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            direction = Random.insideUnitCircle.normalized;
+            if (direction.sqrMagnitude < 0.0001f)
+                direction = Vector2.right;
+        }
+
+        MP_GameBoundary boundary = MP_GameBoundary.Instance;
+        if (boundary == null)
+            return direction;
+
+        Vector2 position = transform.position;
+        Vector2 center = boundary.Center;
+        Vector2 extent = boundary.Size * 0.5f;
+        if ((position.x <= center.x - extent.x && direction.x < 0f) ||
+            (position.x >= center.x + extent.x && direction.x > 0f))
             direction.x = -direction.x;
-        if (Mathf.Abs(projected.y - clamped.y) > 0.001f)
+        if ((position.y <= center.y - extent.y && direction.y < 0f) ||
+            (position.y >= center.y + extent.y && direction.y > 0f))
             direction.y = -direction.y;
         return direction.normalized;
     }

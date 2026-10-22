@@ -40,17 +40,7 @@ public class MP_PlayerMovement : NetworkBehaviour
             (Vector3)(direction * baseMoveSpeed.Value * speedMultiplier * Time.fixedDeltaTime);
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         if (boundary != null)
-        {
-            float radius = 0f;
-            if (bodyCollider != null)
-            {
-                Vector3 scale = bodyCollider.transform.lossyScale;
-                radius = bodyCollider.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
-                radius += Vector2.Distance(bodyCollider.transform.TransformPoint(bodyCollider.offset), transform.position);
-            }
-
-            nextPosition = boundary.ClampPosition(nextPosition, radius);
-        }
+            nextPosition = boundary.ClampPosition(nextPosition);
 
         transform.position = nextPosition;
 
