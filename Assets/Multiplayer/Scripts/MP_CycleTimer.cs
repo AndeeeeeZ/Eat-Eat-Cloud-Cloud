@@ -75,9 +75,12 @@ public class MP_CycleTimer : NetworkBehaviour
         if (!isServer || !isSpawned)
             return;
 
+        MP_PlayerManager manager = MP_PlayerManager.Instance;
+        if (manager != null && manager.RoundEnded)
+            return;
+
         if (currentCycle.value == 0)
         {
-            MP_PlayerManager manager = MP_PlayerManager.Instance;
             if (manager != null && manager.HumanPlayerCount > 0)
                 StartFirstCycle();
             return;
@@ -110,7 +113,18 @@ public class MP_CycleTimer : NetworkBehaviour
         speedMultiplier.value = Mathf.Pow(Mathf.Max(1f, speedMultiplierPerCycle), cycle - 1);
         foodSizeMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodSizeMultiplierPerCycle), cycle - 1);
         foodExpMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodExpMultiplierPerCycle), cycle - 1);
+        if (cycle > 1 && MP_PlayerManager.Instance != null)
+            MP_PlayerManager.Instance.CloseJoining();
         currentCycle.value = cycle;
+    }
+
+    public void StopForWinner()
+    {
+        if (!isServer)
+            return;
+
+        nextCycleAt = 0d;
+        secondsRemaining.value = 0;
     }
 
     private void HandleCycleChanged(int cycle)

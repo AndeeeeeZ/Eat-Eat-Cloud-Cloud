@@ -2,6 +2,27 @@ using PurrNet;
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using PurrNet.Packing;
+
+public struct MP_RoundResult : IPackedAuto, IEquatable<MP_RoundResult>
+{
+    public bool HasWinner;
+    public string WinnerName;
+    public ulong WinnerObjectId;
+
+    public MP_RoundResult(string winnerName, ulong winnerObjectId)
+    {
+        HasWinner = true;
+        WinnerName = winnerName;
+        WinnerObjectId = winnerObjectId;
+    }
+
+    public bool Equals(MP_RoundResult other)
+    {
+        return HasWinner == other.HasWinner && WinnerName == other.WinnerName &&
+            WinnerObjectId == other.WinnerObjectId;
+    }
+}
 
 // Server-side connection records survive the death of a player's cloud
 
@@ -11,6 +32,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     [Header("Respawning")]
     [SerializeField] private MP_Player playerPrefab;
     [SerializeField] private PlayerSpawner spawnPointsSource;
+    private bool spawnPointsSourceInitiallyEnabled;
     private int nextRespawnPoint;
 
     [Header("Safe Spawning")]
@@ -22,6 +44,11 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     public static MP_PlayerManager Instance { get; private set; }
     private readonly List<MP_PlayerStats> players = new();
     public IReadOnlyList<MP_PlayerStats> Players => players;
+    private readonly SyncVar<MP_RoundResult> roundResult = new(default);
+    public bool RoundEnded => isSpawned && roundResult.value.HasWinner;
+    public string WinnerName => roundResult.value.WinnerName ?? "";
+    public bool IsWinner(MP_Player player) => RoundEnded && player != null &&
+        player.objectId == roundResult.value.WinnerObjectId;
 
     public sealed class PlayerSession
     {
@@ -38,6 +65,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     public event Action<int> OnPlayerCountChanged;
     public event Action<int> OnAIPlayerCountChanged;
+    public event Action OnRoundEnded;
     private readonly SyncVar<int> playerCount = new(0);
     private readonly SyncVar<int> aiPlayerCount = new(0);
     public int PlayerCount => playerCount.value;
@@ -56,9 +84,11 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
         playerCount.onChanged += HandlePlayerCountChange; 
         aiPlayerCount.onChanged += HandleAIPlayerCountChange;
+        roundResult.onChanged += HandleRoundResultChanged;
 
         if (spawnPointsSource != null)
         {
+            spawnPointsSourceInitiallyEnabled = spawnPointsSource.enabled;
             spawnPointsSource.SetRespawnPointProvider(this);
             spawnPointsSource.SetPrefabInstantiatedProvider(this);
         }
@@ -70,6 +100,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
         playerCount.onChanged -= HandlePlayerCountChange; 
         aiPlayerCount.onChanged -= HandleAIPlayerCountChange;
+        roundResult.onChanged -= HandleRoundResultChanged;
 
         if (spawnPointsSource != null)
         {
@@ -88,6 +119,9 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             return;
 
         sessionNetworkManager = networkManager;
+        roundResult.value = default;
+        if (spawnPointsSource != null && spawnPointsSourceInitiallyEnabled)
+            spawnPointsSource.enabled = true;
         sessionNetworkManager.onPlayerJoined += HandlePlayerJoined;
         sessionNetworkManager.onPlayerLeft += HandlePlayerLeft;
 
@@ -114,6 +148,54 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         nextRespawnPoint = 0;
         playerCount.value = 0;
         aiPlayerCount.value = 0;
+        roundResult.value = default;
+    }
+
+    private void Update()
+    {
+        if (!isServer || !isSpawned || RoundEnded)
+            return;
+
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        if (timer == null || timer.CurrentCycle <= 1)
+            return;
+
+        CloseJoining();
+        TryEndRound();
+    }
+
+    public void CloseJoining()
+    {
+        if (isServer && spawnPointsSource != null && spawnPointsSource.enabled)
+            spawnPointsSource.enabled = false;
+    }
+
+    private void TryEndRound()
+    {
+        if (!isServer || !isSpawned || RoundEnded || players.Count != 1)
+            return;
+
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        if (timer == null || timer.CurrentCycle <= 1)
+            return;
+
+        MP_PlayerStats stats = players[0];
+        MP_Player winner = stats != null ? stats.GetComponent<MP_Player>() : null;
+        if (winner == null || !winner.IsAlive)
+            return;
+
+        roundResult.value = new MP_RoundResult(stats.PlayerName, winner.objectId);
+        foreach (PlayerSession session in sessions.Values)
+            session.CanRespawn = false;
+
+        timer.StopForWinner();
+        CloseJoining();
+    }
+
+    private void HandleRoundResultChanged(MP_RoundResult result)
+    {
+        if (result.HasWinner)
+            OnRoundEnded?.Invoke();
     }
 
     private void HandlePlayerJoined(PlayerID player, bool isReconnect, bool asServer)
@@ -135,7 +217,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     public void RegisterPlayer(MP_Player player)
     {
-        if (!isServer)
+        if (!isServer || RoundEnded)
             return;
 
         if (player == null || player.Stats == null)
@@ -196,6 +278,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             playerCount.value--;
             if (player.GetComponent<MP_EnemyAI>() != null)
                 aiPlayerCount.value--;
+
+            TryEndRound();
         }
     }
 
@@ -214,7 +298,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         if (!isServer || !sessions.TryGetValue(player, out PlayerSession session) || session.IsAlive)
             return;
 
-        session.CanRespawn = true;
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        session.CanRespawn = !RoundEnded && timer != null && timer.CurrentCycle == 1;
         ReceivePlayerDeath(player, killerName);
     }
 
@@ -228,7 +313,9 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     public bool TryRequestRespawn()
     {
-        if (!isSpawned || !isClient || MP_LocalPlayerManager.Instance == null ||
+        if (!isSpawned || !isClient || RoundEnded ||
+            MP_CycleTimer.Instance == null || MP_CycleTimer.Instance.CurrentCycle != 1 ||
+            MP_LocalPlayerManager.Instance == null ||
             !MP_LocalPlayerManager.Instance.HasDied)
             return false;
 
@@ -246,7 +333,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             return;
 
         // Cloud may already exist while its spawn callbacks are still pending
-        if (!session.CanRespawn || session.Cloud != null)
+        if (RoundEnded || !session.CanRespawn || session.Cloud != null ||
+            MP_CycleTimer.Instance == null || MP_CycleTimer.Instance.CurrentCycle != 1)
             return;
 
         if (playerPrefab == null || playerPrefab.Stats == null ||
@@ -294,7 +382,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     public bool TrySpawnEnemy(MP_Player enemyPrefab)
     {
-        if (!isServer || !isSpawned || enemyPrefab == null ||
+        if (!isServer || !isSpawned || RoundEnded || enemyPrefab == null ||
             enemyPrefab.GetComponent<MP_EnemyAI>() == null)
             return false;
 

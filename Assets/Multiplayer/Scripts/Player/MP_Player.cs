@@ -64,7 +64,7 @@ public class MP_Player : PlayerIdentity<MP_Player>
 
         MP_PlayerManager manager = MP_PlayerManager.Instance;
         MP_PlayerGrowth eaterGrowth = eater.GetComponent<MP_PlayerGrowth>();
-        if (manager == null || eaterGrowth == null)
+        if (manager == null || manager.RoundEnded || eaterGrowth == null)
             return false;
 
         float experienceToAward = playerStats.TotalExp;

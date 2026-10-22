@@ -10,6 +10,7 @@ public class MP_DeathScreen : MonoBehaviour
     [SerializeField] private Button respawnButton;
 
     private MP_LocalPlayerManager localPlayerManager;
+    private MP_PlayerManager roundManager;
     private bool respawnPending;
     private float respawnRequestedAt;
     private const float RespawnTimeout = 10f;
@@ -27,6 +28,9 @@ public class MP_DeathScreen : MonoBehaviour
             respawnButton.onClick.AddListener(RequestRespawn);
 
         localPlayerManager = MP_LocalPlayerManager.Instance;
+        roundManager = MP_PlayerManager.Instance;
+        if (roundManager != null)
+            roundManager.OnRoundEnded += HideDeathScreen;
         if (localPlayerManager == null)
         {
             deathPanel.SetActive(false);
@@ -38,7 +42,9 @@ public class MP_DeathScreen : MonoBehaviour
         localPlayerManager.OnLocalPlayerDied += ShowDeath;
         localPlayerManager.OnRespawnFailed += ShowRespawnFailure;
 
-        if (localPlayerManager.HasDied)
+        if (roundManager != null && roundManager.RoundEnded)
+            HideDeathScreen();
+        else if (localPlayerManager.HasDied)
             ShowDeath(localPlayerManager.KillerName);
         else
             deathPanel.SetActive(false);
@@ -48,6 +54,8 @@ public class MP_DeathScreen : MonoBehaviour
     {
         if (respawnButton != null)
             respawnButton.onClick.RemoveListener(RequestRespawn);
+        if (roundManager != null)
+            roundManager.OnRoundEnded -= HideDeathScreen;
         if (localPlayerManager != null)
         {
             localPlayerManager.OnLocalPlayerReady -= HandleLocalPlayerReady;
@@ -64,9 +72,19 @@ public class MP_DeathScreen : MonoBehaviour
 
     private void ShowDeath(string killerName)
     {
+        if (roundManager != null && roundManager.RoundEnded)
+        {
+            HideDeathScreen();
+            return;
+        }
+
         respawnPending = false;
         if (respawnButton != null)
-            respawnButton.interactable = true;
+        {
+            bool canRespawn = CanRespawn();
+            respawnButton.gameObject.SetActive(canRespawn);
+            respawnButton.interactable = canRespawn;
+        }
         if (messageText != null)
         {
             // Player names are text, not TMP formatting tags
@@ -79,9 +97,25 @@ public class MP_DeathScreen : MonoBehaviour
         deathPanel.SetActive(true);
     }
 
+    private void HideDeathScreen()
+    {
+        respawnPending = false;
+        if (respawnButton != null)
+            respawnButton.interactable = false;
+        deathPanel.SetActive(false);
+    }
+
+    private bool CanRespawn()
+    {
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        return (roundManager == null || !roundManager.RoundEnded) &&
+            timer != null && timer.CurrentCycle == 1;
+    }
+
     public void RequestRespawn()
     {
-        if (respawnPending || localPlayerManager == null || !localPlayerManager.HasDied)
+        if (respawnPending || !CanRespawn() || localPlayerManager == null ||
+            !localPlayerManager.HasDied)
             return;
 
         respawnPending = true;
@@ -98,6 +132,18 @@ public class MP_DeathScreen : MonoBehaviour
 
     private void Update()
     {
+        if (roundManager == null && MP_PlayerManager.Instance != null)
+        {
+            roundManager = MP_PlayerManager.Instance;
+            roundManager.OnRoundEnded += HideDeathScreen;
+        }
+
+        if (roundManager != null && roundManager.RoundEnded && deathPanel.activeSelf)
+            HideDeathScreen();
+        else if (deathPanel.activeSelf && respawnButton != null &&
+            respawnButton.gameObject.activeSelf != CanRespawn())
+            respawnButton.gameObject.SetActive(CanRespawn());
+
         if (respawnPending && Time.unscaledTime - respawnRequestedAt >= RespawnTimeout)
             ShowRespawnFailure("Respawn has not completed. Please try again.");
     }
@@ -107,9 +153,15 @@ public class MP_DeathScreen : MonoBehaviour
         if (localPlayerManager == null || !localPlayerManager.HasDied)
             return;
 
+        if (roundManager != null && roundManager.RoundEnded)
+        {
+            HideDeathScreen();
+            return;
+        }
+
         respawnPending = false;
         if (respawnButton != null)
-            respawnButton.interactable = true;
+            respawnButton.interactable = CanRespawn();
         if (messageText != null)
             messageText.text = message;
     }

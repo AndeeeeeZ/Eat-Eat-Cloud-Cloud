@@ -6,6 +6,7 @@ public class MP_CycleTimerUI : MonoBehaviour
     [SerializeField] private MP_CycleTimer cycleTimer;
     [SerializeField] private TextMeshProUGUI cycleText;
     [SerializeField] private TextMeshProUGUI countdownText;
+    private MP_PlayerManager playerManager;
 
     private void OnEnable()
     {
@@ -18,9 +19,14 @@ public class MP_CycleTimerUI : MonoBehaviour
 
         cycleTimer.OnCycleChanged += UpdateCycle;
         cycleTimer.OnSecondsRemainingChanged += UpdateCountdown;
+        playerManager = MP_PlayerManager.Instance;
+        if (playerManager != null)
+            playerManager.OnRoundEnded += HideTimer;
 
         UpdateCycle(cycleTimer.CurrentCycle);
         UpdateCountdown(cycleTimer.SecondsRemaining);
+        if (playerManager != null && playerManager.RoundEnded)
+            HideTimer();
     }
 
     private void OnDisable()
@@ -30,10 +36,32 @@ public class MP_CycleTimerUI : MonoBehaviour
 
         cycleTimer.OnCycleChanged -= UpdateCycle;
         cycleTimer.OnSecondsRemainingChanged -= UpdateCountdown;
+        if (playerManager != null)
+            playerManager.OnRoundEnded -= HideTimer;
+    }
+
+    private void Update()
+    {
+        if (playerManager == null && MP_PlayerManager.Instance != null)
+        {
+            playerManager = MP_PlayerManager.Instance;
+            playerManager.OnRoundEnded += HideTimer;
+        }
+
+        if (playerManager != null && playerManager.RoundEnded &&
+            (cycleText.enabled || countdownText.enabled))
+            HideTimer();
     }
 
     private void UpdateCycle(int cycle)
     {
+        if (playerManager != null && playerManager.RoundEnded)
+        {
+            HideTimer();
+            return;
+        }
+
+        cycleText.enabled = true;
         bool isFinalCycle = cycle > 0 && cycle >= cycleTimer.FinalCycle;
         cycleText.text = isFinalCycle
             ? "FINAL CYCLE"
@@ -46,5 +74,11 @@ public class MP_CycleTimerUI : MonoBehaviour
         countdownText.text = seconds > 0
             ? $"{seconds / 60:00}:{seconds % 60:00}"
             : "--:--";
+    }
+
+    private void HideTimer()
+    {
+        cycleText.enabled = false;
+        countdownText.enabled = false;
     }
 }

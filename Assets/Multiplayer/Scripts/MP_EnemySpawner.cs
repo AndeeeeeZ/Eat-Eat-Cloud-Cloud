@@ -48,6 +48,10 @@ public class MP_EnemySpawner : NetworkBehaviour
             return;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
+        MP_PlayerManager manager = MP_PlayerManager.Instance;
+        if (manager != null && manager.RoundEnded)
+            return;
+
         if (!started)
         {
             if (timer == null || timer.CurrentCycle == 0)
@@ -64,7 +68,6 @@ public class MP_EnemySpawner : NetworkBehaviour
         if (now < nextAttemptAt)
             return;
 
-        MP_PlayerManager manager = MP_PlayerManager.Instance;
         if (manager == null)
         {
             nextAttemptAt = now + Mathf.Max(0.1f, retryInterval);

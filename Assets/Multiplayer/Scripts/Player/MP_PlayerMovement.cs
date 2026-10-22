@@ -24,7 +24,8 @@ public class MP_PlayerMovement : NetworkBehaviour
 
     private void FixedUpdate()
     {
-        if (!isServer)
+        if (!isServer || (MP_PlayerManager.Instance != null &&
+            MP_PlayerManager.Instance.RoundEnded))
             return;
 
         Vector2 previousPosition = transform.position;

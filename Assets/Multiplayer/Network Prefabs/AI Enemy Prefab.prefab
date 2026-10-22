@@ -432,6 +432,15 @@ MonoBehaviour:
     chaseDurationSeconds: 0
     targetSwitchPauseSeconds: 0
     postEatPauseSeconds: 1
+  - name: GoatedBot
+    weight: 0.05
+    startingExperience: 0
+    decisionInterval: 0
+    movementSpeedMultiplier: 0.9
+    turnSpeedDegreesPerSecond: 360
+    chaseDurationSeconds: 10
+    targetSwitchPauseSeconds: 0
+    postEatPauseSeconds: 0.01
 --- !u!1 &3106172032961018613
 GameObject:
   m_ObjectHideFlags: 0

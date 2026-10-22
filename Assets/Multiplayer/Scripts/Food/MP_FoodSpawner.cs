@@ -271,6 +271,10 @@ public class MP_FoodSpawner : NetworkBehaviour
         if (!isServer || !isSpawned)
             return;
 
+        MP_PlayerManager roundManager = MP_PlayerManager.Instance;
+        if (roundManager != null && roundManager.RoundEnded)
+            return;
+
         if (cycleTimer == null && MP_CycleTimer.Instance != null)
         {
             cycleTimer = MP_CycleTimer.Instance;
@@ -416,7 +420,9 @@ public class MP_FoodSpawner : NetworkBehaviour
     public void ConsumeFoodAlongPath(MP_Player player, MP_PlayerGrowth growth,
         CircleCollider2D body, Vector2 from, Vector2 to, MP_EnemyAI enemyAI)
     {
-        if (!isServer || !isSpawned || player == null || !player.IsAlive ||
+        MP_PlayerManager manager = MP_PlayerManager.Instance;
+        if (!isServer || !isSpawned || (manager != null && manager.RoundEnded) ||
+            player == null || !player.IsAlive ||
             growth == null || body == null || !body.enabled || foodRecordIdsByCell == null ||
             indexedBoundarySize.x <= 0f || indexedBoundarySize.y <= 0f)
             return;
