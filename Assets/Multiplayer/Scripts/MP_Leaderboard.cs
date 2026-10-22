@@ -99,6 +99,15 @@ public class MP_Leaderboard : NetworkBehaviour
         PublishStandings();
     }
 
+    public void ResetRound()
+    {
+        if (!isServer || !isSpawned)
+            return;
+
+        PublishStandings();
+        nextRefreshTime = Time.timeAsDouble + Mathf.Max(0.05f, refreshInterval);
+    }
+
     private void PublishStandings()
     {
         if (!isServer || playerManager == null)

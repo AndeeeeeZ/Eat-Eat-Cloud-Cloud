@@ -59,6 +59,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     }
 
     private readonly Dictionary<PlayerID, PlayerSession> sessions = new();
+    private bool resettingRound;
+    private bool resetPending;
     // Populated on the server only. Counts include living AI clouds
     public IReadOnlyDictionary<PlayerID, PlayerSession> Sessions => sessions;
     private NetworkManager sessionNetworkManager;
@@ -145,6 +147,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         sessions.Clear();
         players.Clear();
         pendingClouds.Clear();
+        resetPending = false;
         nextRespawnPoint = 0;
         playerCount.value = 0;
         aiPlayerCount.value = 0;
@@ -153,10 +156,21 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     private void Update()
     {
-        if (!isServer || !isSpawned || RoundEnded)
+        if (!isServer || !isSpawned || resettingRound)
             return;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
+        if (sessions.Count == 0 && (resetPending || players.Count > 0 ||
+            pendingClouds.Count > 0 || RoundEnded ||
+            (timer != null && timer.CurrentCycle > 0)))
+        {
+            ResetRoundForEmptyServer();
+            return;
+        }
+
+        if (RoundEnded)
+            return;
+
         if (timer == null || timer.CurrentCycle <= 1)
             return;
 
@@ -172,7 +186,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     private void TryEndRound()
     {
-        if (!isServer || !isSpawned || RoundEnded || players.Count != 1)
+        if (!isServer || !isSpawned || resettingRound || sessions.Count == 0 ||
+            RoundEnded || players.Count != 1)
             return;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
@@ -200,8 +215,16 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     private void HandlePlayerJoined(PlayerID player, bool isReconnect, bool asServer)
     {
-        if (asServer && !sessions.ContainsKey(player))
-            sessions.Add(player, new PlayerSession());
+        if (!asServer || sessions.ContainsKey(player))
+            return;
+
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        if (sessions.Count == 0 && (resetPending || players.Count > 0 ||
+            pendingClouds.Count > 0 || RoundEnded ||
+            (timer != null && timer.CurrentCycle > 0)))
+            ResetRoundForEmptyServer();
+
+        sessions.Add(player, new PlayerSession());
     }
 
     private void HandlePlayerLeft(PlayerID player, bool asServer)
@@ -209,15 +232,70 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         if (!asServer || !sessions.TryGetValue(player, out PlayerSession session))
             return;
 
+        sessions.Remove(player);
+        if (sessions.Count == 0)
+        {
+            resetPending = true;
+            return;
+        }
+
         if (session.Cloud != null)
             UnregisterPlayer(session.Cloud);
+    }
 
-        sessions.Remove(player);
+    private void ResetRoundForEmptyServer()
+    {
+        if (!isServer || !isSpawned || resettingRound || sessions.Count != 0)
+            return;
+
+        resettingRound = true;
+        try
+        {
+            // Despawn registered clouds before clearing their round state
+            MP_PlayerStats[] currentPlayers = players.ToArray();
+            foreach (MP_PlayerStats stats in currentPlayers)
+            {
+                if (stats != null && stats.TryGetComponent(out MP_Player cloud))
+                    cloud.Despawn();
+            }
+
+            MP_Player[] unregisteredClouds = pendingClouds.ToArray();
+            foreach (MP_Player cloud in unregisteredClouds)
+            {
+                if (cloud != null && !players.Contains(cloud.Stats))
+                    UnityProxy.Destroy(cloud.gameObject);
+            }
+
+            players.Clear();
+            pendingClouds.Clear();
+            occupiedSpaces.Clear();
+            playerCount.value = 0;
+            aiPlayerCount.value = 0;
+            nextRespawnPoint = 0;
+
+            MP_FoodSpawner.Instance?.ResetRound();
+            MP_EnemySpawner[] enemySpawners = FindObjectsByType<MP_EnemySpawner>(FindObjectsSortMode.None);
+            foreach (MP_EnemySpawner enemySpawner in enemySpawners)
+                enemySpawner.ResetRound();
+
+            MP_CycleTimer.Instance?.ResetRound();
+            roundResult.value = default;
+            MP_Leaderboard[] leaderboards = FindObjectsByType<MP_Leaderboard>(FindObjectsSortMode.None);
+            foreach (MP_Leaderboard leaderboard in leaderboards)
+                leaderboard.ResetRound();
+            if (spawnPointsSource != null && spawnPointsSourceInitiallyEnabled)
+                spawnPointsSource.enabled = true;
+            resetPending = false;
+        }
+        finally
+        {
+            resettingRound = false;
+        }
     }
 
     public void RegisterPlayer(MP_Player player)
     {
-        if (!isServer || RoundEnded)
+        if (!isServer || RoundEnded || resettingRound)
             return;
 
         if (player == null || player.Stats == null)

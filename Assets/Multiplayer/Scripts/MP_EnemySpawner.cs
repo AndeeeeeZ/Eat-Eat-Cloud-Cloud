@@ -34,12 +34,21 @@ public class MP_EnemySpawner : NetworkBehaviour
             return;
         }
 
+        ResetRound();
+    }
+
+    public void ResetRound()
+    {
+        if (!isServer || !isSpawned)
+            return;
+
         spawnedCount = 0;
         initialRemaining = 0;
         nextAttemptAt = 0d;
         nextScheduledSpawnAt = 0d;
         started = false;
-        stopped = false;
+        stopped = enemyPrefab == null || enemyPrefab.GetComponent<MP_EnemyAI>() == null ||
+            enemyPrefab.Stats == null || enemyPrefab.GetComponent<MP_PlayerGrowth>() == null;
     }
 
     private void Update()

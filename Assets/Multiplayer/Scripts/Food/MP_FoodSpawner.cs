@@ -364,6 +364,48 @@ public class MP_FoodSpawner : NetworkBehaviour
         base.OnDespawned(asServer);
     }
 
+    public void ResetRound()
+    {
+        if (!isServer || !isSpawned)
+            return;
+
+        foodRecords.Clear();
+        reindexFoodIds.Clear();
+        nearbyChunksByPlayer.Clear();
+        clientAspectRatios.Clear();
+        readyPlayers.Clear();
+        visibilityCandidates.Clear();
+        dirtyChunks.Clear();
+        snapshotCache.Clear();
+        retiredIdsByChunk.Clear();
+        spawnRegions.Clear();
+        regionsByFoodCount.Clear();
+        initialRegions.Clear();
+        pendingRespawns.Clear();
+        retiringFood.Clear();
+        redistributionCandidates.Clear();
+
+        if (foodRecordIdsByCell != null)
+            foreach (List<uint> cell in foodRecordIdsByCell)
+                cell?.Clear();
+        if (foodIdsByChunk != null)
+            foreach (List<uint> chunk in foodIdsByChunk)
+                chunk?.Clear();
+
+        nextFoodId = 1;
+        activeGroupSize = 0;
+        indexedMaxFoodPerGrid = 0;
+        indexedBoundaryCenter = default;
+        indexedBoundarySize = default;
+        largestFoodRadius = 0f;
+        initialDistributionStarted = false;
+        nextFillAttemptAt = 0d;
+        outdatedFoodTransitionAllowance = 0d;
+        lastOutdatedFoodTransitionBudgetAt = 0d;
+        warnedNoSpawnPosition = false;
+        nextVisibilityRefreshAt = 0d;
+    }
+
     protected override void OnDestroy()
     {
         if (cycleTimer != null)

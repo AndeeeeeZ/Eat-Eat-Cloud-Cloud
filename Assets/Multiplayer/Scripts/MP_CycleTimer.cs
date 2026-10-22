@@ -45,15 +45,21 @@ public class MP_CycleTimer : NetworkBehaviour
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
-        if (!asServer)
+        if (asServer)
+            ResetRound();
+    }
+
+    public void ResetRound()
+    {
+        if (!isServer || !isSpawned)
             return;
 
+        nextCycleAt = 0d;
         currentCycle.value = 0;
         secondsRemaining.value = 0;
         speedMultiplier.value = 1f;
         foodSizeMultiplier.value = 1f;
         foodExpMultiplier.value = 1f;
-        nextCycleAt = 0d;
     }
 
     private void StartFirstCycle()
