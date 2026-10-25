@@ -110,6 +110,7 @@ public class MP_FoodSpawner : NetworkBehaviour
     private readonly List<uint> reindexFoodIds = new();
     private readonly Dictionary<PlayerID, HashSet<int>> nearbyChunksByPlayer = new();
     private readonly Dictionary<PlayerID, float> clientAspectRatios = new();
+    private readonly Dictionary<PlayerID, MP_Player> spectatorTargets = new();
     private readonly HashSet<PlayerID> readyPlayers = new();
     private readonly HashSet<int> visibilityCandidates = new();
     private readonly HashSet<int> dirtyChunks = new();
@@ -150,7 +151,11 @@ public class MP_FoodSpawner : NetworkBehaviour
     private bool warnedNoSpawnPosition;
     private double nextVisibilityRefreshAt;
     private double nextAspectCheckAt;
+    private float nextSpectatorTargetReportAt;
     private float lastReportedAspect;
+    private ulong lastReportedSpectatorTargetId;
+    private bool lastReportedSpectatorHasTarget;
+    private bool spectatorTargetReported;
     private const int CellsPerChunk = 4;
     private const int FailedRegionChecksPerFill = 64;
     private const double FailedFillRetrySeconds = 1d;
@@ -202,6 +207,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         if (!asServer)
         {
+            spectatorTargetReported = false;
             if (!Application.isBatchMode && foodPrefab != null &&
                 foodPrefab.GetComponentInChildren<SpriteRenderer>(true) != null)
                 clientVisuals = new MP_FoodClientVisuals(foodPrefab, transform);
@@ -257,6 +263,9 @@ public class MP_FoodSpawner : NetworkBehaviour
         if (isClient && clientVisuals != null)
             clientVisuals.Tick(Time.deltaTime);
 
+        if (isClient && isSpawned)
+            UpdateSpectatorTarget();
+
         if (isClient && isSpawned && Time.realtimeSinceStartupAsDouble >= nextAspectCheckAt)
         {
             nextAspectCheckAt = Time.realtimeSinceStartupAsDouble +
@@ -273,8 +282,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             return;
 
         MP_PlayerManager roundManager = MP_PlayerManager.Instance;
-        if (roundManager != null && roundManager.RoundEnded)
-            return;
+        bool roundEnded = roundManager != null && roundManager.RoundEnded;
 
         if (cycleTimer == null && MP_CycleTimer.Instance != null)
         {
@@ -283,13 +291,16 @@ public class MP_FoodSpawner : NetworkBehaviour
         }
 
         double now = Time.realtimeSinceStartupAsDouble;
-        int retirementBudget = maxFoodSpawnsPerFrame > 0 ? maxFoodSpawnsPerFrame : 16;
-        RefreshOutdatedFood(now, retirementBudget);
-
-        if (now >= nextFillAttemptAt)
+        if (!roundEnded)
         {
-            int budget = maxFoodSpawnsPerFrame > 0 ? maxFoodSpawnsPerFrame : 16;
-            TryFillTargetFood(budget);
+            int retirementBudget = maxFoodSpawnsPerFrame > 0 ? maxFoodSpawnsPerFrame : 16;
+            RefreshOutdatedFood(now, retirementBudget);
+
+            if (now >= nextFillAttemptAt)
+            {
+                int budget = maxFoodSpawnsPerFrame > 0 ? maxFoodSpawnsPerFrame : 16;
+                TryFillTargetFood(budget);
+            }
         }
 
         if (now >= nextVisibilityRefreshAt)
@@ -315,6 +326,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             reindexFoodIds.Clear();
             nearbyChunksByPlayer.Clear();
             clientAspectRatios.Clear();
+            spectatorTargets.Clear();
             readyPlayers.Clear();
             visibilityCandidates.Clear();
             dirtyChunks.Clear();
@@ -356,7 +368,9 @@ public class MP_FoodSpawner : NetworkBehaviour
             clientVisuals = null;
             receivedChunkVersions.Clear();
             nextAspectCheckAt = 0d;
+            nextSpectatorTargetReportAt = 0f;
             lastReportedAspect = 0f;
+            spectatorTargetReported = false;
         }
 
         if (Instance == this)
@@ -374,6 +388,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         reindexFoodIds.Clear();
         nearbyChunksByPlayer.Clear();
         clientAspectRatios.Clear();
+        spectatorTargets.Clear();
         readyPlayers.Clear();
         visibilityCandidates.Clear();
         dirtyChunks.Clear();
@@ -524,6 +539,24 @@ public class MP_FoodSpawner : NetworkBehaviour
         }
     }
 
+    private void UpdateSpectatorTarget()
+    {
+        MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
+        MP_Player target = spectator != null ? spectator.ViewedPlayer : null;
+        bool hasTarget = target != null && target.IsSpawned(false);
+        ulong targetId = hasTarget ? target.objectId : 0;
+        if (spectatorTargetReported && hasTarget == lastReportedSpectatorHasTarget &&
+            targetId == lastReportedSpectatorTargetId &&
+            (!hasTarget || Time.unscaledTime < nextSpectatorTargetReportAt))
+            return;
+
+        spectatorTargetReported = true;
+        lastReportedSpectatorHasTarget = hasTarget;
+        lastReportedSpectatorTargetId = targetId;
+        nextSpectatorTargetReportAt = Time.unscaledTime + 1f;
+        RequestSpectatorTarget(hasTarget, targetId);
+    }
+
     private static float GetLocalCameraAspect()
     {
         Camera camera = Camera.main;
@@ -565,9 +598,17 @@ public class MP_FoodSpawner : NetworkBehaviour
             }
 
             visibilityCandidates.Clear();
-            if (entry.Value.IsAlive)
+            MP_Player cloud = entry.Value.IsAlive ? entry.Value.Cloud : null;
+            if (cloud == null && spectatorTargets.TryGetValue(player, out MP_Player viewed))
             {
-                MP_Player cloud = entry.Value.Cloud;
+                if (viewed != null && viewed.IsAlive && viewed.IsSpawned(true))
+                    cloud = viewed;
+                else
+                    spectatorTargets.Remove(player);
+            }
+
+            if (cloud != null)
+            {
                 float padding = Mathf.Max(0f, visibilityPadding) + largestFoodRadius;
                 Vector2 extents = GetViewExtents(player, cloud, padding);
                 GatherChunksNear(cloud.transform.position, extents, visibilityCandidates);
@@ -678,12 +719,52 @@ public class MP_FoodSpawner : NetworkBehaviour
         clientAspectRatios[info.sender] = clampedAspect;
     }
 
+    [ServerRpc(requireOwnership: false)]
+    private void RequestSpectatorTarget(bool hasTarget, ulong targetId, RPCInfo info = default)
+    {
+        if (!isServer || !networkManager.TryGetModule<PurrNet.Modules.PlayersManager>(true,
+                out var connectedPlayers) || !connectedPlayers.IsPlayerConnected(info.sender))
+            return;
+
+        MP_PlayerManager manager = MP_PlayerManager.Instance;
+        if (manager == null || !manager.Sessions.TryGetValue(info.sender, out var session))
+            return;
+
+        MP_Player target = null;
+        if (hasTarget && !session.IsAlive)
+        {
+            foreach (MP_PlayerStats stats in manager.Players)
+            {
+                if (stats == null || !stats.TryGetComponent(out MP_Player cloud) ||
+                    !cloud.IsAlive || !cloud.IsSpawned(true) || cloud.objectId != targetId)
+                    continue;
+
+                if (cloud.owner.HasValue || cloud.GetComponent<MP_EnemyAI>() != null)
+                    target = cloud;
+                break;
+            }
+        }
+
+        if (target == null)
+        {
+            if (spectatorTargets.Remove(info.sender))
+                nextVisibilityRefreshAt = 0d;
+        }
+        else if (!spectatorTargets.TryGetValue(info.sender, out MP_Player previous) ||
+            previous != target)
+        {
+            spectatorTargets[info.sender] = target;
+            nextVisibilityRefreshAt = 0d;
+        }
+    }
+
     private void HandleVisibilityPlayerLeft(PlayerID player, bool asServer)
     {
         if (asServer)
         {
             nearbyChunksByPlayer.Remove(player);
             clientAspectRatios.Remove(player);
+            spectatorTargets.Remove(player);
             readyPlayers.Remove(player);
         }
     }

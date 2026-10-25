@@ -21,6 +21,7 @@ public class MP_SpectatorMode : MonoBehaviour
 
     public static MP_SpectatorMode Instance { get; private set; }
     public bool IsSpectating { get; private set; }
+    public MP_Player ViewedPlayer => IsSpectating ? viewedPlayer : null;
 
     private void Awake()
     {

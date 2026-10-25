@@ -10,6 +10,8 @@ public class MP_LeaderboardUI : MonoBehaviour
     [SerializeField, Min(1)] private int topPlayersToShow = 5;
 
     private MP_LocalPlayerManager localPlayerManager;
+    private MP_Player displayedPlayer;
+    private bool displayingSpectator;
     private readonly StringBuilder text = new();
 
     private void OnEnable()
@@ -46,6 +48,16 @@ public class MP_LeaderboardUI : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
+        bool spectating = spectator != null && spectator.IsSpectating;
+        MP_Player player = spectating ? spectator.ViewedPlayer :
+            localPlayerManager != null ? localPlayerManager.LocalPlayer : null;
+        if (displayedPlayer != player || displayingSpectator != spectating)
+            Refresh();
+    }
+
     private void HandleLocalPlayerReady(MP_Player player)
     {
         Refresh();
@@ -53,6 +65,9 @@ public class MP_LeaderboardUI : MonoBehaviour
 
     private void Refresh()
     {
+        if (leaderboard == null || topPlayersText == null || localPlayerRankText == null)
+            return;
+
         var entries = leaderboard.Entries;
         text.Clear();
         int topCount = Mathf.Min(Mathf.Max(1, topPlayersToShow), entries.Count);
@@ -68,18 +83,22 @@ public class MP_LeaderboardUI : MonoBehaviour
         }
         topPlayersText.text = topCount > 0 ? text.ToString() : "No players yet";
 
-        MP_Player localPlayer = localPlayerManager != null ? localPlayerManager.LocalPlayer : null;
-        localPlayerRankText.text = "You: Not ranked";
-        if (localPlayer == null || !localPlayer.owner.HasValue)
+        MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
+        displayingSpectator = spectator != null && spectator.IsSpectating;
+        displayedPlayer = displayingSpectator ? spectator.ViewedPlayer :
+            localPlayerManager != null ? localPlayerManager.LocalPlayer : null;
+        string prefix = displayingSpectator ? "Viewing" : "You";
+        localPlayerRankText.text = $"{prefix}: Not ranked";
+        if (displayedPlayer == null)
             return;
 
-        // Search the complete snapshot so a player below the top few still sees their rank
+        // Search the complete snapshot so a cloud below the top few still sees its rank
         for (int i = 0; i < entries.Count; i++)
         {
-            if (entries[i].IsAI || entries[i].PlayerId != localPlayer.owner.Value)
+            if (entries[i].ObjectId != displayedPlayer.objectId)
                 continue;
 
-            localPlayerRankText.text = $"You: #{i + 1} / {entries.Count}  {entries[i].TotalExp:0} XP";
+            localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count}  {entries[i].TotalExp:0} XP";
             break;
         }
     }

@@ -7,35 +7,38 @@ public class MP_ExpBar : MonoBehaviour
     [SerializeField] private Image bar;
     [SerializeField] private TextMeshProUGUI barText;
     private MP_PlayerGrowth playerGrowth;
-    private MP_LocalPlayerManager localPlayerManager;
+    private MP_Player displayedPlayer;
+
     private void OnEnable()
     {
-        localPlayerManager = MP_LocalPlayerManager.Instance;
         ClearPlayer();
-        if (localPlayerManager == null)
-            return;
+        RefreshDisplayedPlayer();
+    }
 
-        localPlayerManager.OnLocalPlayerReady += HandleLocalPlayerReady;
-        localPlayerManager.OnLocalPlayerLost += ClearPlayer;
-
-        // In case player spawned before this object subscribe to the event
-        if (localPlayerManager.LocalPlayer != null)
-            HandleLocalPlayerReady(localPlayerManager.LocalPlayer);
+    private void Update()
+    {
+        RefreshDisplayedPlayer();
     }
 
     private void OnDisable()
     {
-        if (localPlayerManager != null)
-        {
-            localPlayerManager.OnLocalPlayerReady -= HandleLocalPlayerReady;
-            localPlayerManager.OnLocalPlayerLost -= ClearPlayer;
-        }
         ClearPlayer();
     }
 
-    private void HandleLocalPlayerReady(MP_Player player)
+    private void RefreshDisplayedPlayer()
     {
+        MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
+        MP_LocalPlayerManager local = MP_LocalPlayerManager.Instance;
+        MP_Player player = spectator != null && spectator.IsSpectating
+            ? spectator.ViewedPlayer : local != null ? local.LocalPlayer : null;
+        if (ReferenceEquals(displayedPlayer, player))
+            return;
+
         ClearPlayer();
+        displayedPlayer = player;
+        if (player == null)
+            return;
+
         playerGrowth = player.GetComponent<MP_PlayerGrowth>();
         if (playerGrowth != null)
         {
@@ -49,6 +52,7 @@ public class MP_ExpBar : MonoBehaviour
         if (!ReferenceEquals(playerGrowth, null))
             playerGrowth.OnExpChanged -= UpdateUI;
         playerGrowth = null;
+        displayedPlayer = null;
         if (bar != null)
             bar.fillAmount = 0f;
         if (barText != null)
