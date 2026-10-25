@@ -27,13 +27,20 @@ public struct MP_RoundResult : IPackedAuto, IEquatable<MP_RoundResult>
 // Server-side connection records survive the death of a player's cloud
 
 [DefaultExecutionOrder(-5)]
-public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvidePrefabInstantiated
+public class MP_PlayerManager : NetworkBehaviour
 {
     [Header("Respawning")]
     [SerializeField] private MP_Player playerPrefab;
     [SerializeField] private PlayerSpawner spawnPointsSource;
-    private bool spawnPointsSourceInitiallyEnabled;
     private int nextRespawnPoint;
+
+    private const float StartReadinessRetrySeconds = 1f;
+    private const float StartRequestTimeoutSeconds = 10f;
+    private bool serverReadyToStart;
+    private bool startPending;
+    private float nextStartReadinessCheck;
+    private float startRequestedAt;
+    private string startFailure = "";
 
     [Header("Safe Spawning")]
     [SerializeField, Min(0f)] private float spawnClearance = 0.5f;
@@ -49,6 +56,32 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     public string WinnerName => roundResult.value.WinnerName ?? "";
     public bool IsWinner(MP_Player player) => RoundEnded && player != null &&
         player.objectId == roundResult.value.WinnerObjectId;
+    public bool CanStart => IsClientPrepared() && serverReadyToStart && !startPending &&
+        !RoundEnded && MP_CycleTimer.Instance.CurrentCycle <= 1 &&
+        MP_LocalPlayerManager.Instance.LocalPlayer == null &&
+        !MP_LocalPlayerManager.Instance.HasDied;
+    public string StartStatus
+    {
+        get
+        {
+            MP_LocalPlayerManager local = MP_LocalPlayerManager.Instance;
+            if (RoundEnded)
+                return "Round ended.";
+            if (MP_CycleTimer.Instance != null && MP_CycleTimer.Instance.CurrentCycle > 1)
+                return "Joining is closed. Spectating this round.";
+            if (startPending)
+                return "Starting...";
+            if (!string.IsNullOrEmpty(startFailure))
+                return startFailure;
+            if (!IsClientPrepared())
+                return "Preparing match...";
+            if (!serverReadyToStart)
+                return "Waiting for server...";
+            if (local != null && local.LocalPlayer != null)
+                return "Playing";
+            return "Ready to start";
+        }
+    }
 
     public sealed class PlayerSession
     {
@@ -56,6 +89,7 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         public string PlayerName { get; internal set; } = "";
         public bool IsAlive => Cloud != null && Cloud.IsAlive;
         public bool CanRespawn { get; internal set; }
+        public bool ReadyToStart { get; internal set; }
     }
 
     private readonly Dictionary<PlayerID, PlayerSession> sessions = new();
@@ -90,9 +124,8 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
         if (spawnPointsSource != null)
         {
-            spawnPointsSourceInitiallyEnabled = spawnPointsSource.enabled;
-            spawnPointsSource.SetRespawnPointProvider(this);
-            spawnPointsSource.SetPrefabInstantiatedProvider(this);
+            // Keep spawn points available while preventing PurrNet's automatic join spawn
+            spawnPointsSource.enabled = false;
         }
     }
 
@@ -104,12 +137,6 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
         aiPlayerCount.onChanged -= HandleAIPlayerCountChange;
         roundResult.onChanged -= HandleRoundResultChanged;
 
-        if (spawnPointsSource != null)
-        {
-            spawnPointsSource.ResetSpawnPointProvider();
-            spawnPointsSource.ResetPrefabInstantiatedProvider();
-        }
-
         if (Instance == this)
             Instance = null; 
     }
@@ -118,12 +145,13 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     {
         base.OnSpawned(asServer);
         if (!asServer)
+        {
+            ResetClientStartState();
             return;
+        }
 
         sessionNetworkManager = networkManager;
         roundResult.value = default;
-        if (spawnPointsSource != null && spawnPointsSourceInitiallyEnabled)
-            spawnPointsSource.enabled = true;
         sessionNetworkManager.onPlayerJoined += HandlePlayerJoined;
         sessionNetworkManager.onPlayerLeft += HandlePlayerLeft;
 
@@ -135,7 +163,10 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     {
         base.OnDespawned(asServer);
         if (!asServer)
+        {
+            ResetClientStartState();
             return;
+        }
 
         if (sessionNetworkManager != null)
         {
@@ -156,6 +187,9 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
 
     private void Update()
     {
+        if (isClient && IsSpawned(false))
+            UpdateClientStartReadiness();
+
         if (!isServer || !isSpawned || resettingRound)
             return;
 
@@ -283,8 +317,6 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
             MP_Leaderboard[] leaderboards = FindObjectsByType<MP_Leaderboard>(FindObjectsSortMode.None);
             foreach (MP_Leaderboard leaderboard in leaderboards)
                 leaderboard.ResetRound();
-            if (spawnPointsSource != null && spawnPointsSourceInitiallyEnabled)
-                spawnPointsSource.enabled = true;
             resetPending = false;
         }
         finally
@@ -369,6 +401,158 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
     private void HandleAIPlayerCountChange(int newCount)
     {
         OnAIPlayerCountChanged?.Invoke(newCount);
+    }
+
+    private void ResetClientStartState()
+    {
+        serverReadyToStart = false;
+        startPending = false;
+        nextStartReadinessCheck = 0f;
+        startFailure = "";
+    }
+
+    private bool IsClientPrepared()
+    {
+        return isClient && IsSpawned(false) &&
+            MP_LocalPlayerManager.Instance != null &&
+            MP_GameBoundary.Instance != null &&
+            MP_CycleTimer.Instance != null && MP_CycleTimer.Instance.IsSpawned(false) &&
+            MP_FoodSpawner.Instance != null && MP_FoodSpawner.Instance.IsSpawned(false);
+    }
+
+    private void UpdateClientStartReadiness()
+    {
+        MP_LocalPlayerManager local = MP_LocalPlayerManager.Instance;
+        if (local != null && (local.LocalPlayer != null || local.HasDied))
+        {
+            startPending = false;
+            return;
+        }
+
+        if (startPending && Time.unscaledTime - startRequestedAt >= StartRequestTimeoutSeconds)
+        {
+            startPending = false;
+            startFailure = "Start has not completed. Please try again.";
+        }
+
+        if (serverReadyToStart || !IsClientPrepared() || RoundEnded ||
+            MP_CycleTimer.Instance.CurrentCycle > 1 ||
+            Time.unscaledTime < nextStartReadinessCheck)
+            return;
+
+        nextStartReadinessCheck = Time.unscaledTime + StartReadinessRetrySeconds;
+        ReportClientReady();
+    }
+
+    public bool TryRequestStart()
+    {
+        if (!CanStart)
+            return false;
+
+        startPending = true;
+        startFailure = "";
+        startRequestedAt = Time.unscaledTime;
+        RequestStart();
+        return true;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private void ReportClientReady(RPCInfo info = default)
+    {
+        if (!TryGetConnectedSession(info.sender, out PlayerSession session))
+            return;
+
+        bool ready = CanStartOnServer(session, out string reason);
+        session.ReadyToStart = ready;
+        ReceiveStartReadiness(info.sender, ready, reason);
+    }
+
+    [TargetRpc]
+    private void ReceiveStartReadiness(PlayerID target, bool ready, string reason)
+    {
+        serverReadyToStart = ready;
+        startFailure = ready ? "" : reason;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private void RequestStart(RPCInfo info = default)
+    {
+        if (!TryGetConnectedSession(info.sender, out PlayerSession session))
+            return;
+
+        bool serverReady = CanStartOnServer(session, out string reason);
+        if (!session.ReadyToStart || !serverReady)
+        {
+            ReceiveStartFailure(info.sender,
+                string.IsNullOrEmpty(reason) ? "Wait until the match is ready." : reason);
+            return;
+        }
+
+        if (!TryFindSafeSpawn(playerPrefab, out SpawnPoint spawn))
+        {
+            ReceiveStartFailure(info.sender, "No safe space is available inside the game boundary.");
+            return;
+        }
+
+        session.ReadyToStart = false;
+        GameObject cloud = null;
+        try
+        {
+            cloud = UnityProxy.Instantiate(playerPrefab.gameObject, spawn.position, spawn.rotation,
+                gameObject.scene);
+            TrackPendingCloud(cloud);
+            MP_Player player = cloud.GetComponent<MP_Player>();
+            session.Cloud = player;
+            player.GiveOwnership(info.sender);
+        }
+        catch (Exception exception)
+        {
+            if (cloud != null)
+                UnityProxy.Destroy(cloud);
+            session.Cloud = null;
+            session.ReadyToStart = true;
+            Debug.LogException(exception, this);
+            ReceiveStartFailure(info.sender, "Unable to start. Please try again.");
+        }
+    }
+
+    private bool TryGetConnectedSession(PlayerID sender, out PlayerSession session)
+    {
+        session = null;
+        if (!isServer || !isSpawned ||
+            !networkManager.TryGetModule<PurrNet.Modules.PlayersManager>(true, out var connectedPlayers) ||
+            !connectedPlayers.IsPlayerConnected(sender))
+            return false;
+
+        HandlePlayerJoined(sender, false, true);
+        return sessions.TryGetValue(sender, out session);
+    }
+
+    private bool CanStartOnServer(PlayerSession session, out string reason)
+    {
+        reason = "";
+        if (resettingRound || RoundEnded)
+            reason = "This round has ended.";
+        else if (MP_CycleTimer.Instance == null || !MP_CycleTimer.Instance.IsSpawned(true) ||
+            MP_FoodSpawner.Instance == null || !MP_FoodSpawner.Instance.IsReadyForPlayers ||
+            MP_GameBoundary.Instance == null)
+            reason = "Waiting for server...";
+        else if (MP_CycleTimer.Instance.CurrentCycle > 1)
+            reason = "Joining is closed. Spectating this round.";
+        else if (playerPrefab == null || playerPrefab.Stats == null ||
+            playerPrefab.GetComponent<MP_PlayerGrowth>() == null)
+            reason = "Starting is not configured on the server.";
+        else if (session.Cloud != null)
+            reason = "You are already in the match.";
+
+        return string.IsNullOrEmpty(reason);
+    }
+
+    [TargetRpc]
+    private void ReceiveStartFailure(PlayerID target, string message)
+    {
+        startPending = false;
+        startFailure = message;
     }
 
     public void NotifyPlayerDeath(PlayerID player, string killerName)
@@ -481,26 +665,6 @@ public class MP_PlayerManager : NetworkBehaviour, IProvideSpawnPoints, IProvideP
                 UnityProxy.Destroy(cloud);
             throw;
         }
-    }
-
-    // PurrNet's default spawner uses the same selection for initial joins
-    public SpawnPoint NextSpawnPoint(PlayerID player, SceneID scene)
-    {
-        if (TryFindSafeSpawn(playerPrefab, out SpawnPoint spawn))
-            return spawn;
-
-        Debug.LogWarning("No clear player spawn was found inside the game boundary", this);
-        MP_GameBoundary boundary = MP_GameBoundary.Instance;
-        Vector3 position = playerPrefab.transform.position;
-        if (boundary != null)
-            position = boundary.ClampPosition(position);
-
-        return new SpawnPoint { position = position, rotation = playerPrefab.transform.rotation };
-    }
-
-    public void OnPrefabInstantiated(GameObject prefabInstance, PlayerID player, SceneID scene)
-    {
-        TrackPendingCloud(prefabInstance);
     }
 
     private void TrackPendingCloud(GameObject cloud)

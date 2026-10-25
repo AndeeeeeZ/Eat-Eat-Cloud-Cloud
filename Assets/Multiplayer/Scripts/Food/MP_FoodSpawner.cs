@@ -157,6 +157,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
     public static MP_FoodSpawner Instance { get; private set; }
     public int ActiveFoodCount => foodRecords.Count;
+    public bool IsReadyForPlayers => isServer && isSpawned && foodRecordIdsByCell != null;
 
     public Vector2 GetCameraViewExtents(float cloudScale, float aspect)
     {
