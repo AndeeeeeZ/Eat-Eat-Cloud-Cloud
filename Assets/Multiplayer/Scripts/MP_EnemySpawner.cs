@@ -27,9 +27,11 @@ public class MP_EnemySpawner : NetworkBehaviour
             return;
 
         if (enemyPrefab == null || enemyPrefab.GetComponent<MP_EnemyAI>() == null ||
-            enemyPrefab.Stats == null || enemyPrefab.GetComponent<MP_PlayerGrowth>() == null)
+            enemyPrefab.Stats == null || enemyPrefab.GetComponent<MP_PlayerGrowth>() == null ||
+            enemyPrefab.GetComponent<MP_PlayerCostume>() is not { } costume ||
+            !costume.IsValid(default))
         {
-            Debug.LogError("Assign a valid AI player prefab on MP_EnemySpawner", this);
+            Debug.LogError("Assign an AI prefab with MP_PlayerCostume and all cosmetic slots on MP_EnemySpawner", this);
             stopped = true;
             return;
         }
@@ -48,7 +50,9 @@ public class MP_EnemySpawner : NetworkBehaviour
         nextScheduledSpawnAt = 0d;
         started = false;
         stopped = enemyPrefab == null || enemyPrefab.GetComponent<MP_EnemyAI>() == null ||
-            enemyPrefab.Stats == null || enemyPrefab.GetComponent<MP_PlayerGrowth>() == null;
+            enemyPrefab.Stats == null || enemyPrefab.GetComponent<MP_PlayerGrowth>() == null ||
+            enemyPrefab.GetComponent<MP_PlayerCostume>() is not { } costume ||
+            !costume.IsValid(default);
     }
 
     private void Update()

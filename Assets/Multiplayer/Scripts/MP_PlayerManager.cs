@@ -670,6 +670,10 @@ public class MP_PlayerManager : NetworkBehaviour
             enemyPrefab.GetComponent<MP_EnemyAI>() == null)
             return false;
 
+        MP_PlayerCostume prefabCostume = enemyPrefab.GetComponent<MP_PlayerCostume>();
+        if (prefabCostume == null || !prefabCostume.IsValid(default))
+            return false;
+
         if (!TryFindSafeSpawn(enemyPrefab, out SpawnPoint spawn))
             return false;
 
@@ -679,6 +683,9 @@ public class MP_PlayerManager : NetworkBehaviour
             cloud = UnityProxy.Instantiate(enemyPrefab.gameObject, spawn.position,
                 spawn.rotation, gameObject.scene);
             TrackPendingCloud(cloud);
+            MP_PlayerCostume costume = cloud.GetComponent<MP_PlayerCostume>();
+            if (costume == null || !costume.RandomizeOnServer())
+                throw new InvalidOperationException("Unable to randomize the AI cloud costume");
             return true;
         }
         catch

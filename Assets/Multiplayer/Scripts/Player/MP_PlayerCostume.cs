@@ -28,6 +28,21 @@ public class MP_PlayerCostume : NetworkBehaviour
         return true;
     }
 
+    public bool RandomizeOnServer()
+    {
+        if (!isServer || !IsValid(default))
+            return false;
+
+        return SetCostumeOnServer(new MP_CostumeIndices
+        {
+            CloudBase = Random.Range(0, catalog.cloudBases.Length),
+            Bottom = Random.Range(0, catalog.bottoms.Length),
+            Right = Random.Range(0, catalog.rightSides.Length),
+            Left = Random.Range(0, catalog.leftSides.Length),
+            Face = Random.Range(0, catalog.faces.Length)
+        });
+    }
+
     private static bool IsIndexValid(Sprite[] sprites, int index)
     {
         return sprites != null && index >= 0 && index < sprites.Length;
