@@ -18,10 +18,12 @@ public class MP_PlayerMovement : NetworkBehaviour
     private Vector3[] visualLocalPositions;
     private Transform presentationTarget;
     private Vector2 presentationPosition;
+    private Vector2 previousServerPosition;
     private bool presentationInitialized;
     private float predictionLeadSeconds = 0.12f;
     private double nextPingLookupAt;
     private double lastInputAt;
+    private double lastServerMovedAt;
 
     public Transform PresentationTarget
     {
@@ -95,8 +97,12 @@ public class MP_PlayerMovement : NetworkBehaviour
         if (!presentationInitialized)
         {
             presentationPosition = serverPosition;
+            previousServerPosition = serverPosition;
+            lastServerMovedAt = Time.timeAsDouble;
             presentationInitialized = true;
         }
+        if ((serverPosition - previousServerPosition).sqrMagnitude > 0.000001f)
+            lastServerMovedAt = Time.timeAsDouble;
 
         float speedMultiplier = MP_CycleTimer.Instance != null
             ? MP_CycleTimer.Instance.SpeedMultiplier : 1f;
@@ -113,12 +119,12 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         predictionLeadSeconds = Mathf.MoveTowards(predictionLeadSeconds,
             GetPredictionLeadSeconds(), Time.deltaTime * 0.25f);
-        float maxLeadDistance = speed * predictionLeadSeconds + 0.1f;
-        Vector2 separation = presentationPosition - serverPosition;
-        if (separation.sqrMagnitude > maxLeadDistance * maxLeadDistance)
-            presentationPosition = serverPosition + separation.normalized * maxLeadDistance;
-        else if (direction.sqrMagnitude == 0f &&
-            Time.timeAsDouble - lastInputAt > predictionLeadSeconds * 2f)
+        double idleSeconds = Time.timeAsDouble - lastInputAt;
+        bool serverSettled = lastServerMovedAt > lastInputAt &&
+            Time.timeAsDouble - lastServerMovedAt > 0.05d;
+        if (direction.sqrMagnitude == 0f &&
+            idleSeconds > predictionLeadSeconds * 2f &&
+            (serverSettled || idleSeconds > 1.5d))
             presentationPosition = Vector2.MoveTowards(presentationPosition,
                 serverPosition, Mathf.Max(1f, speed) * Time.deltaTime);
 
@@ -133,6 +139,8 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         if (presentationTarget != null)
             presentationTarget.position = transform.position + worldOffset;
+
+        previousServerPosition = serverPosition;
     }
 
     private float GetPredictionLeadSeconds()
@@ -174,6 +182,8 @@ public class MP_PlayerMovement : NetworkBehaviour
         {
             presentationInitialized = false;
             presentationPosition = Vector2.zero;
+            previousServerPosition = Vector2.zero;
+            lastServerMovedAt = 0d;
             predictionLeadSeconds = 0.12f;
             for (int i = 0; i < visualChildren.Length; i++)
                 visualChildren[i].localPosition = visualLocalPositions[i];
