@@ -45,7 +45,8 @@ public class MP_CameraController : MonoBehaviour
 
     private void HandleLocalPlayerReady(MP_Player player)
     {
-        SetTarget(player.transform);
+        MP_PlayerMovement movement = player.GetComponent<MP_PlayerMovement>();
+        SetTarget(movement != null ? movement.PresentationTarget : player.transform);
     }
 
     public void SetTarget(Transform target)
@@ -60,7 +61,7 @@ public class MP_CameraController : MonoBehaviour
 
         cam.Follow = target;
 
-        currentPlayer = target.GetComponent<MP_PlayerGrowth>();
+        currentPlayer = target.GetComponentInParent<MP_PlayerGrowth>();
 
         if (currentPlayer == null)
             return;

@@ -9,11 +9,13 @@ public class MP_PlayerInput : NetworkBehaviour
 
     private Inputs input;
     private Camera mainCamera; 
+    private MP_PlayerMovement playerMovement;
 
     private void Awake()
     {
         input = new Inputs();
         mainCamera = Camera.main; 
+        playerMovement = GetComponent<MP_PlayerMovement>();
     }
 
     protected override void OnSpawned(bool asServer)
@@ -107,7 +109,9 @@ public class MP_PlayerInput : NetworkBehaviour
             )
         );
 
-        Vector2 moveDirection = ((Vector2)mouseWorldPosition - (Vector2)transform.position).normalized;
+        Vector2 origin = playerMovement != null
+            ? playerMovement.PresentationPosition : (Vector2)transform.position;
+        Vector2 moveDirection = ((Vector2)mouseWorldPosition - origin).normalized;
 
         return moveDirection;
     }
