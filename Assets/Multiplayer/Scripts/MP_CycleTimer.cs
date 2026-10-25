@@ -87,7 +87,7 @@ public class MP_CycleTimer : NetworkBehaviour
 
         if (currentCycle.value == 0)
         {
-            if (manager != null && manager.HumanPlayerCount > 0)
+            if (manager != null && manager.Sessions.Count > 0)
                 StartFirstCycle();
             return;
         }
