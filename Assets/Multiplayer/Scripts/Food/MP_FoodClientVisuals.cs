@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Local, pooled food sprites. The server owns the food records and collisions
-internal sealed class MP_FoodClientVisuals
+internal class MP_FoodClientVisuals
 {
     private readonly struct VisualData
     {
@@ -16,10 +16,11 @@ internal sealed class MP_FoodClientVisuals
         }
     }
 
-    private sealed class Visual
+    private class Visual
     {
         public GameObject GameObject;
         public SpriteRenderer Renderer;
+        public Color BaseColor;
         public float Elapsed;
         public float FadeStartAlpha;
         public bool IsFading;
@@ -34,11 +35,11 @@ internal sealed class MP_FoodClientVisuals
 
     private readonly Transform parent;
     private readonly SpriteRenderer source;
+    private readonly MP_Food food;
     private readonly Vector3 positionOffset;
     private readonly Vector3 visualScale;
     private readonly Quaternion visualRotation;
     private readonly Vector2 spriteExtents;
-    private readonly Color baseColor;
     private readonly float fadeInDuration;
     private readonly Dictionary<uint, VisualData> records = new();
     private readonly Dictionary<uint, Visual> active = new();
@@ -59,12 +60,16 @@ internal sealed class MP_FoodClientVisuals
     {
         this.parent = parent;
         source = prefab.GetComponentInChildren<SpriteRenderer>(true);
-        MP_Food food = prefab.GetComponent<MP_Food>();
+        food = prefab.GetComponent<MP_Food>();
         positionOffset = Vector3.Scale(prefab.transform.localScale, source.transform.localPosition);
         visualScale = Vector3.Scale(prefab.transform.localScale, source.transform.localScale);
         visualRotation = prefab.transform.localRotation * source.transform.localRotation;
-        spriteExtents = source.sprite.bounds.extents;
-        baseColor = source.color;
+        Vector2 extents = source.sprite.bounds.extents;
+        if (food != null && food.ShapeOptions != null)
+            foreach (Sprite shape in food.ShapeOptions)
+                if (shape != null)
+                    extents = Vector2.Max(extents, shape.bounds.extents);
+        spriteExtents = extents;
         fadeInDuration = food != null ? Mathf.Max(0f, food.FadeInDuration) : 0f;
         localCamera = Camera.main;
     }
@@ -209,6 +214,8 @@ internal sealed class MP_FoodClientVisuals
         Visual visual = pool.Count > 0 ? pool.Pop() : CreateVisual();
         visual.GameObject.transform.position = (Vector3)position + positionOffset * size;
         visual.GameObject.transform.localScale = visualScale * size;
+        visual.Renderer.sprite = food != null ? food.GetShape(id, source.sprite) : source.sprite;
+        visual.BaseColor = food != null ? food.GetColor(id, source.color) : source.color;
         visual.GameObject.SetActive(true);
         active.Add(id, visual);
         bool animate = fadeIn && fadeInDuration > 0f;
@@ -273,7 +280,7 @@ internal sealed class MP_FoodClientVisuals
 
     private void SetAlpha(Visual visual, float alpha)
     {
-        Color color = baseColor;
+        Color color = visual.BaseColor;
         color.a *= alpha;
         visual.Renderer.color = color;
     }
@@ -298,7 +305,8 @@ internal sealed class MP_FoodClientVisuals
             fading.Remove(visual);
 
         visual.Elapsed = 0f;
-        visual.FadeStartAlpha = baseColor.a > 0f ? visual.Renderer.color.a / baseColor.a : 1f;
+        visual.FadeStartAlpha = visual.BaseColor.a > 0f ?
+            visual.Renderer.color.a / visual.BaseColor.a : 1f;
         visual.IsFading = true;
         visual.IsFadingOut = true;
         fading.Add(visual);

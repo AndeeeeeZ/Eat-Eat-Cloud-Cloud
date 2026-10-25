@@ -93,8 +93,22 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 11400000, guid: 62dfb0ba8dec6334285941713cc88e7f, type: 2}
   expAmount: 1
   fadeInDuration: 0.35
-  fadeOutDuration: 0.5
-  despawnGraceSeconds: 0.25
+  colorOptions:
+  - {r: 1, g: 0.65, b: 0.75, a: 1}
+  - {r: 0.65, g: 0.85, b: 1, a: 1}
+  - {r: 1, g: 0.9, b: 0.6, a: 1}
+  - {r: 0.7, g: 1, b: 0.75, a: 1}
+  - {r: 0.85, g: 0.7, b: 1, a: 1}
+  - {r: 0.9339623, g: 0.9339623, b: 0.9339623, a: 1}
+  - {r: 0.9528302, g: 0.68765575, b: 0.8663539, a: 1}
+  shapeOptions:
+  - {fileID: 0}
+  - {fileID: 21300000, guid: aa38ac8d4de004e4f9d0afe91e3535ec, type: 3}
+  - {fileID: 21300000, guid: c6fb29a67e467d249be19e18f447a434, type: 3}
+  - {fileID: 21300000, guid: 693cbed7d57e1634ca857dbe47f434df, type: 3}
+  - {fileID: 21300000, guid: 08d935f2475c18f4393ecb9f5c62b6b8, type: 3}
+  - {fileID: 21300000, guid: 9b181cba6165b3c40b47d152ee8f5f04, type: 3}
+  - {fileID: 21300000, guid: 60ed2817b269b0a4e84efe1870cf74e6, type: 3}
 --- !u!1 &7583935634685580628
 GameObject:
   m_ObjectHideFlags: 0
