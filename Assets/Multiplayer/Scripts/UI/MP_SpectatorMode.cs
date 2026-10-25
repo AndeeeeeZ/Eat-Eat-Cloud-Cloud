@@ -112,15 +112,41 @@ public class MP_SpectatorMode : MonoBehaviour
         if (!IsSpectating)
             return;
 
-        RefreshPlayers();
+        MP_Player previousPlayer = viewedPlayer;
+        int previousIndex = viewedIndex;
+        CollectPlayers();
         if (players.Count == 0)
+        {
+            ClearViewedPlayer();
             return;
+        }
 
-        viewedIndex = (viewedIndex + direction + players.Count) % players.Count;
+        int currentIndex = IndexOfPlayer(previousPlayer);
+        if (currentIndex >= 0)
+            viewedIndex = (currentIndex + direction + players.Count) % players.Count;
+        else if (direction > 0)
+            viewedIndex = Mathf.Clamp(previousIndex, 0, players.Count - 1);
+        else
+            viewedIndex = (previousIndex - 1 + players.Count) % players.Count;
+
+        if (players.Count > 1 && ReferenceEquals(players[viewedIndex], previousPlayer))
+            viewedIndex = (viewedIndex + direction + players.Count) % players.Count;
+
         FollowPlayer(players[viewedIndex]);
     }
 
-    private void RefreshPlayers()
+    private int IndexOfPlayer(MP_Player player)
+    {
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (ReferenceEquals(players[i], player))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private void CollectPlayers()
     {
         players.Clear();
         foreach (MP_Player player in FindObjectsByType<MP_Player>(FindObjectsSortMode.None))
@@ -134,19 +160,29 @@ public class MP_SpectatorMode : MonoBehaviour
         }
 
         players.Sort((left, right) => left.objectId.CompareTo(right.objectId));
+    }
+
+    private void RefreshPlayers()
+    {
+        CollectPlayers();
         if (players.Count == 0)
         {
-            viewedPlayer = null;
-            viewedIndex = 0;
-            cameraController.RemoveTarget();
-            UpdateViewedPlayerText();
+            ClearViewedPlayer();
             return;
         }
 
-        int currentIndex = players.IndexOf(viewedPlayer);
+        int currentIndex = IndexOfPlayer(viewedPlayer);
         viewedIndex = currentIndex >= 0 ? currentIndex : Mathf.Clamp(viewedIndex, 0, players.Count - 1);
-        if (viewedPlayer != players[viewedIndex])
+        if (!ReferenceEquals(viewedPlayer, players[viewedIndex]))
             FollowPlayer(players[viewedIndex]);
+    }
+
+    private void ClearViewedPlayer()
+    {
+        viewedPlayer = null;
+        viewedIndex = 0;
+        cameraController.RemoveTarget();
+        UpdateViewedPlayerText();
     }
 
     private void FollowPlayer(MP_Player player)
