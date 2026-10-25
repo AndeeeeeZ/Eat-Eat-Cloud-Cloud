@@ -91,6 +91,7 @@ public class MP_CameraController : MonoBehaviour
         if (!ReferenceEquals(currentPlayer, null))
             currentPlayer.OnScaleChanged -= SetScaleTo;
         currentPlayer = null;
+        normalScale = targetScale = 1f;
         if (cam != null)
             cam.Follow = null;
     }

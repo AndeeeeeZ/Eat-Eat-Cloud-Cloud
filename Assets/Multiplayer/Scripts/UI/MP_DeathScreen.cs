@@ -138,8 +138,14 @@ public class MP_DeathScreen : MonoBehaviour
             roundManager.OnRoundEnded += HideDeathScreen;
         }
 
-        if (roundManager != null && roundManager.RoundEnded && deathPanel.activeSelf)
+        bool spectating = MP_SpectatorMode.Instance != null && MP_SpectatorMode.Instance.IsSpectating;
+        if (spectating && deathPanel.activeSelf)
+            deathPanel.SetActive(false);
+        else if (roundManager != null && roundManager.RoundEnded && deathPanel.activeSelf)
             HideDeathScreen();
+        else if (!spectating && localPlayerManager != null && localPlayerManager.HasDied &&
+            (roundManager == null || !roundManager.RoundEnded) && !deathPanel.activeSelf)
+            ShowDeath(localPlayerManager.KillerName);
         else if (deathPanel.activeSelf && respawnButton != null &&
             respawnButton.gameObject.activeSelf != CanRespawn())
             respawnButton.gameObject.SetActive(CanRespawn());

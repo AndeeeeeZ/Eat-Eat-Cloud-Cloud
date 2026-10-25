@@ -31,7 +31,9 @@ public class MP_StartScreen : MonoBehaviour
     {
         MP_PlayerManager manager = MP_PlayerManager.Instance;
         MP_LocalPlayerManager local = MP_LocalPlayerManager.Instance;
-        bool show = local == null || (local.LocalPlayer == null && !local.HasDied);
+        bool spectating = MP_SpectatorMode.Instance != null && MP_SpectatorMode.Instance.IsSpectating;
+        bool show = !spectating && (local == null ||
+            (local.LocalPlayer == null && !local.HasDied));
         if (startPanel.activeSelf != show)
             startPanel.SetActive(show);
         if (!show)
