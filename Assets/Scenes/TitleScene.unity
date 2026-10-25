@@ -291,7 +291,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000015258789}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &187916688
@@ -2458,7 +2458,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'Made by the RPI Game Dev Club
 
-    for the HackRPI 2026: In The Cloud'
+    for HackRPI 2026: In The Cloud'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5f2c8e5b2dbd5634ca5d6949e48dd707, type: 2}
   m_sharedMaterial: {fileID: 2847186113443747762, guid: 5f2c8e5b2dbd5634ca5d6949e48dd707, type: 2}
