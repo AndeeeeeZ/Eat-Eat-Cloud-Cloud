@@ -4,4 +4,5 @@ using UnityEngine;
 public class MP_PlayerData : ScriptableObject
 {
     public string PlayerName; 
+    public MP_CostumeIndices Costume;
 }

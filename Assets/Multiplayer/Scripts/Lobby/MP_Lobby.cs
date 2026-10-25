@@ -13,6 +13,7 @@ public class MP_Lobby : MonoBehaviour
     private void Awake()
     {
         playerData.PlayerName = "";
+        playerData.Costume = default;
     }
 
     public void Play()

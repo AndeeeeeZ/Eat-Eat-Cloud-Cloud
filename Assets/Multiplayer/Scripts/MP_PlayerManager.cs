@@ -32,6 +32,7 @@ public class MP_PlayerManager : NetworkBehaviour
     [Header("Respawning")]
     [SerializeField] private MP_Player playerPrefab;
     [SerializeField] private PlayerSpawner spawnPointsSource;
+    [SerializeField] private MP_PlayerData localPlayerData;
     private int nextRespawnPoint;
 
     private const float StartReadinessRetrySeconds = 1f;
@@ -56,7 +57,8 @@ public class MP_PlayerManager : NetworkBehaviour
     public string WinnerName => roundResult.value.WinnerName ?? "";
     public bool IsWinner(MP_Player player) => RoundEnded && player != null &&
         player.objectId == roundResult.value.WinnerObjectId;
-    public bool CanStart => IsClientPrepared() && serverReadyToStart && !startPending &&
+    public bool CanStart => localPlayerData != null && IsClientPrepared() &&
+        serverReadyToStart && !startPending &&
         !RoundEnded && MP_CycleTimer.Instance.CurrentCycle <= 1 &&
         MP_LocalPlayerManager.Instance.LocalPlayer == null &&
         !MP_LocalPlayerManager.Instance.HasDied;
@@ -75,6 +77,8 @@ public class MP_PlayerManager : NetworkBehaviour
                 return "Starting...";
             if (!string.IsNullOrEmpty(startFailure))
                 return startFailure;
+            if (localPlayerData == null)
+                return "Player data is not configured.";
             if (!IsClientPrepared())
                 return "Preparing match...";
             if (!serverReadyToStart)
@@ -89,6 +93,7 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         public MP_Player Cloud { get; internal set; }
         public string PlayerName { get; internal set; } = "";
+        public MP_CostumeIndices Costume { get; internal set; }
         public bool IsAlive => Cloud != null && Cloud.IsAlive;
         public bool CanRespawn { get; internal set; }
         public bool ReadyToStart { get; internal set; }
@@ -454,7 +459,7 @@ public class MP_PlayerManager : NetworkBehaviour
         startPending = true;
         startFailure = "";
         startRequestedAt = Time.unscaledTime;
-        RequestStart();
+        RequestStart(localPlayerData.Costume);
         return true;
     }
 
@@ -477,7 +482,7 @@ public class MP_PlayerManager : NetworkBehaviour
     }
 
     [ServerRpc(requireOwnership: false)]
-    private void RequestStart(RPCInfo info = default)
+    private void RequestStart(MP_CostumeIndices selectedCostume, RPCInfo info = default)
     {
         if (!TryGetConnectedSession(info.sender, out PlayerSession session))
             return;
@@ -490,6 +495,13 @@ public class MP_PlayerManager : NetworkBehaviour
             return;
         }
 
+        MP_PlayerCostume prefabCostume = playerPrefab.GetComponent<MP_PlayerCostume>();
+        if (prefabCostume == null || !prefabCostume.IsValid(selectedCostume))
+        {
+            ReceiveStartFailure(info.sender, "The selected cloud costume is unavailable.");
+            return;
+        }
+
         if (!TryFindSafeSpawn(playerPrefab, out SpawnPoint spawn))
         {
             ReceiveStartFailure(info.sender, "No safe space is available inside the game boundary.");
@@ -497,6 +509,7 @@ public class MP_PlayerManager : NetworkBehaviour
         }
 
         session.ReadyToStart = false;
+        session.Costume = selectedCostume;
         GameObject cloud = null;
         try
         {
@@ -506,6 +519,8 @@ public class MP_PlayerManager : NetworkBehaviour
             MP_Player player = cloud.GetComponent<MP_Player>();
             session.Cloud = player;
             player.GiveOwnership(info.sender);
+            if (!player.GetComponent<MP_PlayerCostume>().SetCostumeOnServer(session.Costume))
+                throw new InvalidOperationException("Unable to apply the selected cloud costume");
         }
         catch (Exception exception)
         {
@@ -544,6 +559,9 @@ public class MP_PlayerManager : NetworkBehaviour
         else if (playerPrefab == null || playerPrefab.Stats == null ||
             playerPrefab.GetComponent<MP_PlayerGrowth>() == null)
             reason = "Starting is not configured on the server.";
+        else if (playerPrefab.GetComponent<MP_PlayerCostume>() is not { } costume ||
+            !costume.IsValid(default))
+            reason = "Cloud costumes are not configured on the server.";
         else if (session.Cloud != null)
             reason = "You are already in the match.";
 
@@ -625,6 +643,8 @@ public class MP_PlayerManager : NetworkBehaviour
             MP_Player player = cloud.GetComponent<MP_Player>();
             session.Cloud = player;
             player.GiveOwnership(info.sender);
+            if (!player.GetComponent<MP_PlayerCostume>().SetCostumeOnServer(session.Costume))
+                throw new InvalidOperationException("Unable to restore the cloud costume");
         }
         catch (Exception exception)
         {
