@@ -9,6 +9,8 @@ public class MP_StartScreen : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private Button startButton;
     [SerializeField] private TextMeshProUGUI startButtonText;
+    [SerializeField] private Button spectatorButton;
+    [SerializeField] private TextMeshProUGUI spectatorButtonText;
 
     private void OnEnable()
     {
@@ -58,6 +60,16 @@ public class MP_StartScreen : MonoBehaviour
             string buttonLabel = canStart ? "Start" : "Connecting";
             if (startButtonText.text != buttonLabel)
                 startButtonText.text = buttonLabel;
+        }
+
+        bool canSpectate = manager != null && manager.CanSpectate;
+        if (spectatorButton != null)
+            spectatorButton.interactable = canSpectate;
+        if (spectatorButtonText != null)
+        {
+            string buttonLabel = canSpectate ? "Spectate" : "Connecting";
+            if (spectatorButtonText.text != buttonLabel)
+                spectatorButtonText.text = buttonLabel;
         }
     }
 

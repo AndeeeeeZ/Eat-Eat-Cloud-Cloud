@@ -60,6 +60,8 @@ public class MP_PlayerManager : NetworkBehaviour
         !RoundEnded && MP_CycleTimer.Instance.CurrentCycle <= 1 &&
         MP_LocalPlayerManager.Instance.LocalPlayer == null &&
         !MP_LocalPlayerManager.Instance.HasDied;
+    public bool CanSpectate => IsClientPrepared() &&
+        MP_LocalPlayerManager.Instance.LocalPlayer == null;
     public string StartStatus
     {
         get
