@@ -4,6 +4,8 @@ using UnityEngine.Events;
 public class MP_Lobby : MonoBehaviour
 {
     [SerializeField] private MP_NameInputHandler nameInputHandler;
+    [SerializeField] private GameObject namePanel;
+    [SerializeField] private GameObject selectionPanel;
 
     [Header("Player Data")]
     [SerializeField] private MP_PlayerData playerData;
@@ -18,12 +20,15 @@ public class MP_Lobby : MonoBehaviour
 
     public void Play()
     {
-        if (!nameInputHandler.IsValidName())
+        string name = nameInputHandler.GetName();
+
+        if (string.IsNullOrWhiteSpace(name))
         {
+            namePanel.SetActive(true);
+            selectionPanel.SetActive(false);
+            nameInputHandler.IsValidName();
             return;
         }
-
-        string name = nameInputHandler.GetName();
 
         Debug.Log("Player name: " + name);
         playerData.PlayerName = name;
