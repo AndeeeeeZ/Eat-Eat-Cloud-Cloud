@@ -1,3 +1,5 @@
+using PurrNet;
+using PurrNet.Transports;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,6 +13,14 @@ public class MP_StartScreen : MonoBehaviour
     [SerializeField] private TextMeshProUGUI startButtonText;
     [SerializeField] private Button spectatorButton;
     [SerializeField] private TextMeshProUGUI spectatorButtonText;
+    [SerializeField] private Button retryButton;
+
+    private NetworkManager connectionManager;
+    private ConnectionState? observedClientState;
+    private bool subscribedToConnectionState;
+    private bool connectionAttempted;
+    private bool connectionFailed;
+    private bool retryRequested;
 
     private void OnEnable()
     {
@@ -21,12 +31,68 @@ public class MP_StartScreen : MonoBehaviour
             return;
         }
 
+        TrackConnectionManager();
         Refresh();
     }
 
     private void Update()
     {
+        TrackConnectionManager();
         Refresh();
+    }
+
+    private void OnDisable()
+    {
+        if (subscribedToConnectionState && connectionManager != null)
+            connectionManager.onClientConnectionState -= HandleClientConnectionState;
+
+        subscribedToConnectionState = false;
+    }
+
+    private void TrackConnectionManager()
+    {
+        NetworkManager current = NetworkManager.main;
+        if (connectionManager != current)
+        {
+            if (subscribedToConnectionState && connectionManager != null)
+                connectionManager.onClientConnectionState -= HandleClientConnectionState;
+
+            connectionManager = current;
+            subscribedToConnectionState = false;
+            observedClientState = null;
+            connectionAttempted = false;
+            connectionFailed = false;
+            retryRequested = false;
+        }
+
+        if (connectionManager == null)
+            return;
+
+        if (!subscribedToConnectionState)
+        {
+            connectionManager.onClientConnectionState += HandleClientConnectionState;
+            subscribedToConnectionState = true;
+        }
+
+        ConnectionState state = connectionManager.clientState;
+        if (observedClientState != state)
+            HandleClientConnectionState(state);
+    }
+
+    private void HandleClientConnectionState(ConnectionState state)
+    {
+        observedClientState = state;
+        if (state is ConnectionState.Connecting or ConnectionState.Connected)
+        {
+            connectionAttempted = true;
+            connectionFailed = false;
+            retryRequested = false;
+        }
+        else if (state == ConnectionState.Disconnected && connectionAttempted)
+        {
+            connectionFailed = true;
+            retryRequested = false;
+        }
     }
 
     private void Refresh()
@@ -38,10 +104,20 @@ public class MP_StartScreen : MonoBehaviour
             (local.LocalPlayer == null && !local.HasDied));
         if (startPanel.activeSelf != show)
             startPanel.SetActive(show);
+
+        ConnectionState clientState = connectionManager != null
+            ? connectionManager.clientState : ConnectionState.Disconnected;
+        bool showRetry = show && connectionFailed && !retryRequested &&
+            clientState == ConnectionState.Disconnected;
+        if (retryButton != null && retryButton.gameObject.activeSelf != showRetry)
+            retryButton.gameObject.SetActive(showRetry);
+
         if (!show)
             return;
 
-        string status = manager != null ? manager.StartStatus : "Connecting to server...";
+        string status = clientState != ConnectionState.Connected
+            ? connectionFailed ? "Failed to connect to server." : "Connecting to server..."
+            : manager != null ? manager.StartStatus : "Connecting to server...";
         if (statusText != null && statusText.text != status)
             statusText.text = status;
 
@@ -78,5 +154,18 @@ public class MP_StartScreen : MonoBehaviour
         MP_PlayerManager manager = MP_PlayerManager.Instance;
         if (manager != null && manager.TryRequestStart())
             Refresh();
+    }
+
+    public void RetryConnection()
+    {
+        TrackConnectionManager();
+        if (!connectionFailed || retryRequested || connectionManager == null ||
+            connectionManager.clientState != ConnectionState.Disconnected)
+            return;
+
+        retryRequested = true;
+        connectionFailed = false;
+        connectionManager.StartClient();
+        Refresh();
     }
 }
