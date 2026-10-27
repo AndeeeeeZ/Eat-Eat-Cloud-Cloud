@@ -69,8 +69,9 @@ public class MP_ExpBar : MonoBehaviour
 
         float percentage = Mathf.Clamp01(exp / expCap);
         
-        // NOTE: the exp and exp cap display are rounded to integers
-        barText.text = $"{Mathf.Round(exp)}/{Mathf.Round(expCap)}";
-        bar.fillAmount = percentage;
+        if (barText != null)
+            barText.text = $"Level {playerGrowth.Level}";
+        if (bar != null)
+            bar.fillAmount = percentage;
     }
 }

@@ -10,15 +10,17 @@ public struct MP_LeaderboardEntry : IPackedAuto, IEquatable<MP_LeaderboardEntry>
     public ulong ObjectId;
     public bool IsAI;
     public string PlayerName;
+    public int Level;
     public float TotalExp;
 
     public MP_LeaderboardEntry(PlayerID playerId, ulong objectId, bool isAI,
-        string playerName, float totalExp)
+        string playerName, int level, float totalExp)
     {
         PlayerId = playerId;
         ObjectId = objectId;
         IsAI = isAI;
         PlayerName = playerName;
+        Level = level;
         TotalExp = totalExp;
     }
 
@@ -26,7 +28,7 @@ public struct MP_LeaderboardEntry : IPackedAuto, IEquatable<MP_LeaderboardEntry>
     {
         return PlayerId == other.PlayerId && ObjectId == other.ObjectId &&
             IsAI == other.IsAI && PlayerName == other.PlayerName &&
-            TotalExp.Equals(other.TotalExp);
+            Level == other.Level && TotalExp.Equals(other.TotalExp);
     }
 
     public static int CompareRank(MP_LeaderboardEntry first, MP_LeaderboardEntry second)
@@ -129,12 +131,12 @@ public class MP_Leaderboard : NetworkBehaviour
 
             PlayerID owner = player.owner.GetValueOrDefault();
             workingEntries.Add(new MP_LeaderboardEntry(owner, player.objectId,
-                isAI, stats.PlayerName, stats.TotalExp));
+                isAI, stats.PlayerName, stats.Level, stats.TotalExp));
         }
 
         workingEntries.Sort(MP_LeaderboardEntry.CompareRank);
 
-        // Avoid sending a snapshot when neither scores, names, nor membership changed
+        // Avoid sending a snapshot when scores, levels, names, and membership are unchanged
         MP_LeaderboardEntry[] previous = standings.value;
         bool changed = previous.Length != workingEntries.Count;
         for (int i = 0; !changed && i < previous.Length; i++)

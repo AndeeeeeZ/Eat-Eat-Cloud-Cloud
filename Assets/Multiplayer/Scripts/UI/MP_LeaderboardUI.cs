@@ -13,8 +13,8 @@ public class MP_LeaderboardUI : MonoBehaviour
     private MP_Player displayedPlayer;
     private bool displayingSpectator;
     private readonly StringBuilder text = new();
-    private readonly StringBuilder xpText = new();
-    private TextMeshProUGUI xpColumnText;
+    private readonly StringBuilder levelText = new();
+    private TextMeshProUGUI levelColumnText;
     private Vector2 originalTextPosition;
     private Vector2 originalTextSize;
     private bool originalWordWrapping;
@@ -33,11 +33,11 @@ public class MP_LeaderboardUI : MonoBehaviour
         originalTextPosition = topPlayersText.rectTransform.anchoredPosition;
         originalTextSize = topPlayersText.rectTransform.sizeDelta;
         originalWordWrapping = topPlayersText.enableWordWrapping;
-        xpColumnText = Instantiate(topPlayersText, topPlayersText.transform.parent);
-        xpColumnText.name = "Leaderboard XP";
-        xpColumnText.alignment = TextAlignmentOptions.TopRight;
-        xpColumnText.enableWordWrapping = false;
-        xpColumnText.raycastTarget = false;
+        levelColumnText = Instantiate(topPlayersText, topPlayersText.transform.parent);
+        levelColumnText.name = "Leaderboard Level";
+        levelColumnText.alignment = TextAlignmentOptions.TopRight;
+        levelColumnText.enableWordWrapping = false;
+        levelColumnText.raycastTarget = false;
         topPlayersText.enableWordWrapping = false;
         leaderboard.OnLeaderboardChanged += Refresh;
 
@@ -53,14 +53,14 @@ public class MP_LeaderboardUI : MonoBehaviour
 
     private void OnDisable()
     {
-        if (xpColumnText != null)
+        if (levelColumnText != null)
         {
-            Destroy(xpColumnText.gameObject);
+            Destroy(levelColumnText.gameObject);
             topPlayersText.rectTransform.anchoredPosition = originalTextPosition;
             topPlayersText.rectTransform.sizeDelta = originalTextSize;
             topPlayersText.enableWordWrapping = originalWordWrapping;
         }
-        xpColumnText = null;
+        levelColumnText = null;
         if (leaderboard != null)
             leaderboard.OnLeaderboardChanged -= Refresh;
         if (localPlayerManager != null)
@@ -87,33 +87,33 @@ public class MP_LeaderboardUI : MonoBehaviour
 
     private void Refresh()
     {
-        if (leaderboard == null || topPlayersText == null || localPlayerRankText == null || xpColumnText == null)
+        if (leaderboard == null || topPlayersText == null || localPlayerRankText == null || levelColumnText == null)
             return;
 
         var entries = leaderboard.Entries;
         text.Clear();
-        xpText.Clear();
+        levelText.Clear();
         int topCount = Mathf.Min(Mathf.Max(1, topPlayersToShow), entries.Count);
-        float xpWidth = 40f;
+        float levelWidth = 40f;
         for (int i = 0; i < topCount; i++)
-            xpWidth = Mathf.Max(xpWidth,
-                xpColumnText.GetPreferredValues($"{entries[i].TotalExp:0} XP").x + 6f);
-        xpWidth = Mathf.Min(xpWidth, originalTextSize.x * 0.5f);
-        float nameWidth = originalTextSize.x - xpWidth - 4f;
+            levelWidth = Mathf.Max(levelWidth,
+                levelColumnText.GetPreferredValues($"Lvl. {entries[i].Level}").x + 6f);
+        levelWidth = Mathf.Min(levelWidth, originalTextSize.x * 0.5f);
+        float nameWidth = originalTextSize.x - levelWidth - 4f;
         RectTransform namesRect = topPlayersText.rectTransform;
-        RectTransform xpRect = xpColumnText.rectTransform;
+        RectTransform levelRect = levelColumnText.rectTransform;
         namesRect.sizeDelta = new Vector2(nameWidth, originalTextSize.y);
         namesRect.anchoredPosition = originalTextPosition +
-            Vector2.left * (xpWidth + 4f) * 0.5f;
-        xpRect.sizeDelta = new Vector2(xpWidth, originalTextSize.y);
-        xpRect.anchoredPosition = originalTextPosition +
-            Vector2.right * (originalTextSize.x - xpWidth) * 0.5f;
+            Vector2.left * (levelWidth + 4f) * 0.5f;
+        levelRect.sizeDelta = new Vector2(levelWidth, originalTextSize.y);
+        levelRect.anchoredPosition = originalTextPosition +
+            Vector2.right * (originalTextSize.x - levelWidth) * 0.5f;
         for (int i = 0; i < topCount; i++)
         {
             if (i > 0)
             {
                 text.AppendLine();
-                xpText.AppendLine();
+                levelText.AppendLine();
             }
             string name = string.IsNullOrWhiteSpace(entries[i].PlayerName)
                 ? "Unnamed"
@@ -127,10 +127,10 @@ public class MP_LeaderboardUI : MonoBehaviour
                 name += "...";
             }
             text.Append(rank).Append(name);
-            xpText.Append(entries[i].TotalExp.ToString("0")).Append(" XP");
+            levelText.Append("Lvl. ").Append(entries[i].Level);
         }
         topPlayersText.text = topCount > 0 ? text.ToString() : "No players yet";
-        xpColumnText.text = xpText.ToString();
+        levelColumnText.text = levelText.ToString();
 
         MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
         displayingSpectator = spectator != null && spectator.IsSpectating;
@@ -147,7 +147,7 @@ public class MP_LeaderboardUI : MonoBehaviour
             if (entries[i].ObjectId != displayedPlayer.objectId)
                 continue;
 
-            localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count}  {entries[i].TotalExp:0} XP";
+            localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count}  Lvl. {entries[i].Level}";
             break;
         }
     }
