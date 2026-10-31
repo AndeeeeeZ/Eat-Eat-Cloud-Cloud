@@ -4162,7 +4162,6 @@ MonoBehaviour:
   - Dragon
   - Fire
   - Game
-  - Dog
   - Cloud
   - Water
   - Earth
@@ -4185,6 +4184,7 @@ MonoBehaviour:
   - Player
   - Giant
   - Slayer
+  - Sleeper
   maxNum: 100
 --- !u!114 &1926456057
 MonoBehaviour:
