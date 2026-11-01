@@ -81,10 +81,11 @@ public class MP_WinScreen : MonoBehaviour
 
         string winnerName = roundManager.WinnerName;
         messageText.richText = false;
-        messageText.text = localPlayerManager != null &&
-            roundManager.IsWinner(localPlayerManager.LocalPlayer)
-            ? "You won!"
-            : $"{(string.IsNullOrWhiteSpace(winnerName) ? "A cloud" : winnerName)} won!";
+        messageText.text = !roundManager.HasWinner
+            ? "No clouds survived!"
+            : localPlayerManager != null && roundManager.IsWinner(localPlayerManager.LocalPlayer)
+                ? "You won!"
+                : $"{(string.IsNullOrWhiteSpace(winnerName) ? "A cloud" : winnerName)} won!";
         winPanel.SetActive(true);
     }
 }

@@ -14,6 +14,7 @@ public class MP_PlayerStats : NetworkBehaviour
     public int Level => playerGrowth.Level;
     public float Exp => playerGrowth.Exp;
     public float TotalExp => playerGrowth.TotalExp;
+    public float Scale => playerGrowth.Scale;
 
     public void SetPlayerNameOnServer(string newName)
     {

@@ -6,6 +6,7 @@ public class MP_CycleTimer : NetworkBehaviour
 {
     [SerializeField, Min(1f)] private float cycleDurationSeconds = 60f;
     [SerializeField, Min(1)] private int finalCycle = 5;
+    [SerializeField, Min(1f)] private float finalCycleDurationSeconds = 180f;
     [SerializeField, Min(1f)] private float speedMultiplierPerCycle = 1.1f;
     [SerializeField, Min(1f)] private float foodSizeMultiplierPerCycle = 1.1f;
     [SerializeField, Min(1f)] private float foodExpMultiplierPerCycle = 1.1f;
@@ -65,15 +66,7 @@ public class MP_CycleTimer : NetworkBehaviour
     private void StartFirstCycle()
     {
         BeginCycle(1);
-        if (currentCycle.value >= FinalCycle)
-        {
-            secondsRemaining.value = 0;
-            return;
-        }
-
-        float duration = Mathf.Max(1f, cycleDurationSeconds);
-        nextCycleAt = Time.realtimeSinceStartupAsDouble + duration;
-        secondsRemaining.value = Mathf.CeilToInt(duration);
+        StartCycleTimer(Time.realtimeSinceStartupAsDouble);
     }
 
     private void Update()
@@ -92,26 +85,36 @@ public class MP_CycleTimer : NetworkBehaviour
             return;
         }
 
-        if (currentCycle.value >= FinalCycle)
+        if (nextCycleAt <= 0d)
             return;
 
         double now = Time.realtimeSinceStartupAsDouble;
         if (now >= nextCycleAt)
         {
-            BeginCycle(currentCycle.value + 1);
             if (currentCycle.value >= FinalCycle)
             {
+                nextCycleAt = 0d;
                 secondsRemaining.value = 0;
+                manager?.EndRoundForLargestCloud();
                 return;
             }
 
-            float duration = Mathf.Max(1f, cycleDurationSeconds);
-            nextCycleAt = now + duration;
+            BeginCycle(currentCycle.value + 1);
+            StartCycleTimer(now);
         }
 
         int remaining = Mathf.CeilToInt((float)Math.Max(0d, nextCycleAt - now));
         if (secondsRemaining.value != remaining)
             secondsRemaining.value = remaining;
+    }
+
+    private void StartCycleTimer(double now)
+    {
+        float duration = currentCycle.value >= FinalCycle
+            ? Mathf.Max(1f, finalCycleDurationSeconds)
+            : Mathf.Max(1f, cycleDurationSeconds);
+        nextCycleAt = now + duration;
+        secondsRemaining.value = Mathf.CeilToInt(duration);
     }
 
     private void BeginCycle(int cycle)
@@ -124,7 +127,7 @@ public class MP_CycleTimer : NetworkBehaviour
         currentCycle.value = cycle;
     }
 
-    public void StopForWinner()
+    public void StopForRoundEnd()
     {
         if (!isServer)
             return;

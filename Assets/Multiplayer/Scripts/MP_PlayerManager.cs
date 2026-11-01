@@ -6,12 +6,14 @@ using PurrNet.Packing;
 
 public struct MP_RoundResult : IPackedAuto, IEquatable<MP_RoundResult>
 {
+    public bool HasEnded;
     public bool HasWinner;
     public string WinnerName;
     public ulong WinnerObjectId;
 
     public MP_RoundResult(string winnerName, ulong winnerObjectId)
     {
+        HasEnded = true;
         HasWinner = true;
         WinnerName = winnerName;
         WinnerObjectId = winnerObjectId;
@@ -19,7 +21,8 @@ public struct MP_RoundResult : IPackedAuto, IEquatable<MP_RoundResult>
 
     public bool Equals(MP_RoundResult other)
     {
-        return HasWinner == other.HasWinner && WinnerName == other.WinnerName &&
+        return HasEnded == other.HasEnded && HasWinner == other.HasWinner &&
+            WinnerName == other.WinnerName &&
             WinnerObjectId == other.WinnerObjectId;
     }
 }
@@ -57,9 +60,11 @@ public class MP_PlayerManager : NetworkBehaviour
     private readonly List<MP_PlayerStats> players = new();
     public IReadOnlyList<MP_PlayerStats> Players => players;
     private readonly SyncVar<MP_RoundResult> roundResult = new(default);
-    public bool RoundEnded => isSpawned && roundResult.value.HasWinner;
+    public bool RoundEnded => isSpawned && roundResult.value.HasEnded;
+    public bool HasWinner => RoundEnded && roundResult.value.HasWinner;
     public string WinnerName => roundResult.value.WinnerName ?? "";
-    public bool IsWinner(MP_Player player) => RoundEnded && player != null &&
+    public bool IsWinner(MP_Player player) => HasWinner &&
+        player != null &&
         player.objectId == roundResult.value.WinnerObjectId;
     public bool CanStart => localPlayerData != null && IsClientPrepared() &&
         nameAccepted && serverReadyToStart && !startPending &&
@@ -246,17 +251,62 @@ public class MP_PlayerManager : NetworkBehaviour
         if (winner == null || !winner.IsAlive)
             return;
 
-        roundResult.value = new MP_RoundResult(stats.PlayerName, winner.objectId);
+        EndRoundWithWinner(stats, winner);
+    }
+
+    public void EndRoundForLargestCloud()
+    {
+        if (!isServer || !isSpawned || resettingRound || sessions.Count == 0 || RoundEnded ||
+            MP_CycleTimer.Instance == null ||
+            MP_CycleTimer.Instance.CurrentCycle < MP_CycleTimer.Instance.FinalCycle)
+            return;
+
+        MP_PlayerStats largestStats = null;
+        MP_Player largestPlayer = null;
+        foreach (MP_PlayerStats stats in players)
+        {
+            if (stats == null)
+                continue;
+
+            MP_Player player = stats.GetComponent<MP_Player>();
+            if (player == null || !player.IsAlive)
+                continue;
+
+            if (largestStats == null || stats.Scale > largestStats.Scale ||
+                (stats.Scale == largestStats.Scale &&
+                    (stats.TotalExp > largestStats.TotalExp ||
+                     (stats.TotalExp == largestStats.TotalExp &&
+                      player.objectId < largestPlayer.objectId))))
+            {
+                largestStats = stats;
+                largestPlayer = player;
+            }
+        }
+
+        if (largestStats != null)
+            EndRoundWithWinner(largestStats, largestPlayer);
+        else
+            FinishRound(new MP_RoundResult { HasEnded = true });
+    }
+
+    private void EndRoundWithWinner(MP_PlayerStats stats, MP_Player winner)
+    {
+        FinishRound(new MP_RoundResult(stats.PlayerName, winner.objectId));
+    }
+
+    private void FinishRound(MP_RoundResult result)
+    {
+        roundResult.value = result;
         foreach (PlayerSession session in sessions.Values)
             session.CanRespawn = false;
 
-        timer.StopForWinner();
+        MP_CycleTimer.Instance?.StopForRoundEnd();
         CloseJoining();
     }
 
     private void HandleRoundResultChanged(MP_RoundResult result)
     {
-        if (result.HasWinner)
+        if (result.HasEnded)
             OnRoundEnded?.Invoke();
     }
 

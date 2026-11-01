@@ -66,14 +66,21 @@ public class MP_CycleTimerUI : MonoBehaviour
         cycleText.text = isFinalCycle
             ? "FINAL CYCLE"
             : cycle > 0 ? $"Cycle {cycle}" : "Cycle --";
-        countdownText.enabled = !isFinalCycle;
+        countdownText.enabled = true;
+        UpdateCountdown(cycleTimer.SecondsRemaining);
     }
 
     private void UpdateCountdown(int seconds)
     {
-        countdownText.text = seconds > 0
-            ? $"{seconds / 60:00}:{seconds % 60:00}"
-            : "--:--";
+        bool isFinalCycle = cycleTimer.CurrentCycle > 0 &&
+            cycleTimer.CurrentCycle >= cycleTimer.FinalCycle;
+        countdownText.text = isFinalCycle
+            ? seconds > 0
+                ? $"Largest wins in {seconds / 60:00}:{seconds % 60:00}"
+                : "Choosing winner..."
+            : seconds > 0
+                ? $"{seconds / 60:00}:{seconds % 60:00}"
+                : "--:--";
     }
 
     private void HideTimer()
