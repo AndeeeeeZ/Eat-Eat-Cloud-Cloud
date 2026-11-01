@@ -58,10 +58,6 @@ public static class MP_PlayerNameRules
         }
 
         name = builder.ToString();
-        if (name.Length > 0)
-            return true;
-
-        reason = "Enter a name before starting.";
-        return false;
+        return true;
     }
 }

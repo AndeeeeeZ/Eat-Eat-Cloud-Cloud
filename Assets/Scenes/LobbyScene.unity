@@ -4157,6 +4157,7 @@ MonoBehaviour:
   - Clouder
   - Eat-Eat
   - Cloud-Cloud
+  - Player
   part1:
   - Food
   - Dragon
@@ -4169,11 +4170,35 @@ MonoBehaviour:
   - Great
   - Super
   - Big
-  - Grass
   - Random
   - Cute
   - Crazy
   - Strong
+  - Sleepy
+  - Okay
+  - Best
+  - Mid
+  - Void
+  - Golden
+  - Toxic
+  - Silver
+  - Cosmic
+  - Meta
+  - Mega
+  - Mini
+  - Confused
+  - Fake
+  - Real
+  - Shiny
+  - Fluffy
+  - Puffy
+  - Misty
+  - Stormy
+  - Windy
+  - Cloudy
+  - Floating
+  - Hallow
+  - Glowing
   part2:
   - Eater
   - Fighter
@@ -4185,6 +4210,23 @@ MonoBehaviour:
   - Giant
   - Slayer
   - Sleeper
+  - Moon
+  - Sun
+  - Star
+  - Cloud
+  - Gamer
+  - Noob
+  - Builder
+  - Crusher
+  - Enjoyer
+  - Keeper
+  - Expert
+  - Pro
+  - Rain
+  - Sheep
+  - Snow
+  - Floater
+  - Drifter
   maxNum: 100
 --- !u!114 &1926456057
 MonoBehaviour:
