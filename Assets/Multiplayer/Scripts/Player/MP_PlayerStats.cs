@@ -15,12 +15,6 @@ public class MP_PlayerStats : NetworkBehaviour
     public float Exp => playerGrowth.Exp;
     public float TotalExp => playerGrowth.TotalExp;
 
-    [ServerRpc]
-    public void SetPlayerName(string newName)
-    {
-        SetPlayerNameOnServer(newName);
-    }
-
     public void SetPlayerNameOnServer(string newName)
     {
         if (!isServer)

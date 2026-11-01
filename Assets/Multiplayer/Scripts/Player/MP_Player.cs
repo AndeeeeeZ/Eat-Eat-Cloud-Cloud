@@ -4,7 +4,6 @@ using PurrNet;
 public class MP_Player : PlayerIdentity<MP_Player>
 {
     [SerializeField] private MP_PlayerStats playerStats;
-    [SerializeField] private MP_PlayerData playerData;
 
     [Header("Spawn Protection")]
     [SerializeField, Min(0f)] private float spawnProtectionDuration = 3f;
@@ -115,7 +114,6 @@ public class MP_Player : PlayerIdentity<MP_Player>
 
             MP_LocalPlayerManager.Instance.SetLocalPlayer(this);
 
-            playerStats.SetPlayerName(playerData.PlayerName);
         }
     }
 

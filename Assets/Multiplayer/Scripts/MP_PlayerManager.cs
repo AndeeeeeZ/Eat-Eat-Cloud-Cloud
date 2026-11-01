@@ -37,11 +37,15 @@ public class MP_PlayerManager : NetworkBehaviour
 
     private const float StartReadinessRetrySeconds = 1f;
     private const float StartRequestTimeoutSeconds = 10f;
+    private bool nameAccepted;
     private bool serverReadyToStart;
     private bool startPending;
+    private float nextNameValidationCheck;
     private float nextStartReadinessCheck;
     private float startRequestedAt;
     private string startFailure = "";
+    private string nameRejectionReason = "";
+    public string NameRejectionReason => nameRejectionReason;
 
     [Header("Safe Spawning")]
     [SerializeField, Min(0f)] private float spawnClearance = 0.5f;
@@ -58,11 +62,11 @@ public class MP_PlayerManager : NetworkBehaviour
     public bool IsWinner(MP_Player player) => RoundEnded && player != null &&
         player.objectId == roundResult.value.WinnerObjectId;
     public bool CanStart => localPlayerData != null && IsClientPrepared() &&
-        serverReadyToStart && !startPending &&
+        nameAccepted && serverReadyToStart && !startPending &&
         !RoundEnded && MP_CycleTimer.Instance.CurrentCycle <= 1 &&
         MP_LocalPlayerManager.Instance.LocalPlayer == null &&
         !MP_LocalPlayerManager.Instance.HasDied;
-    public bool CanSpectate => IsClientPrepared() &&
+    public bool CanSpectate => nameAccepted && IsClientPrepared() &&
         MP_LocalPlayerManager.Instance.LocalPlayer == null;
     public string StartStatus
     {
@@ -79,6 +83,8 @@ public class MP_PlayerManager : NetworkBehaviour
                 return startFailure;
             if (localPlayerData == null)
                 return "Player data is not configured.";
+            if (!nameAccepted)
+                return "Checking name...";
             if (!IsClientPrepared())
                 return "Preparing match...";
             if (!serverReadyToStart)
@@ -412,10 +418,13 @@ public class MP_PlayerManager : NetworkBehaviour
 
     private void ResetClientStartState()
     {
+        nameAccepted = false;
         serverReadyToStart = false;
         startPending = false;
+        nextNameValidationCheck = 0f;
         nextStartReadinessCheck = 0f;
         startFailure = "";
+        nameRejectionReason = "";
     }
 
     private bool IsClientPrepared()
@@ -442,6 +451,17 @@ public class MP_PlayerManager : NetworkBehaviour
             startFailure = "Start has not completed. Please try again.";
         }
 
+        if (!nameAccepted)
+        {
+            if (localPlayerData != null && string.IsNullOrEmpty(nameRejectionReason) &&
+                Time.unscaledTime >= nextNameValidationCheck)
+            {
+                nextNameValidationCheck = Time.unscaledTime + StartReadinessRetrySeconds;
+                RequestNameValidation(localPlayerData.PlayerName);
+            }
+            return;
+        }
+
         if (serverReadyToStart || !IsClientPrepared() || RoundEnded ||
             MP_CycleTimer.Instance.CurrentCycle > 1 ||
             Time.unscaledTime < nextStartReadinessCheck)
@@ -461,6 +481,54 @@ public class MP_PlayerManager : NetworkBehaviour
         startRequestedAt = Time.unscaledTime;
         RequestStart(localPlayerData.Costume);
         return true;
+    }
+
+    [ServerRpc(requireOwnership: false)]
+    private void RequestNameValidation(string requestedName, RPCInfo info = default)
+    {
+        if (!TryGetConnectedSession(info.sender, out PlayerSession session))
+            return;
+
+        if (!MP_PlayerNameRules.TryNormalize(requestedName, out string acceptedName,
+            out string reason))
+        {
+            ReceiveNameRejection(info.sender, reason);
+            return;
+        }
+
+        foreach (KeyValuePair<PlayerID, PlayerSession> entry in sessions)
+        {
+            if (entry.Key != info.sender &&
+                string.Equals(entry.Value.PlayerName, acceptedName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ReceiveNameRejection(info.sender, "That name is already taken.");
+                return;
+            }
+        }
+
+        if (!string.Equals(session.PlayerName, acceptedName, StringComparison.Ordinal))
+        {
+            if (session.Cloud != null)
+            {
+                ReceiveNameRejection(info.sender, "Name cannot be changed during a match.");
+                return;
+            }
+
+            session.PlayerName = acceptedName;
+            session.ReadyToStart = false;
+        }
+
+        ReceiveNameAccepted(info.sender, acceptedName);
+    }
+
+    [TargetRpc]
+    private void ReceiveNameAccepted(PlayerID target, string acceptedName)
+    {
+        nameAccepted = true;
+        nameRejectionReason = "";
+        if (localPlayerData != null)
+            localPlayerData.PlayerName = acceptedName;
     }
 
     [ServerRpc(requireOwnership: false)]
@@ -548,7 +616,9 @@ public class MP_PlayerManager : NetworkBehaviour
     private bool CanStartOnServer(PlayerSession session, out string reason)
     {
         reason = "";
-        if (resettingRound || RoundEnded)
+        if (string.IsNullOrEmpty(session.PlayerName))
+            reason = "Waiting for name validation.";
+        else if (resettingRound || RoundEnded)
             reason = "This round has ended.";
         else if (MP_CycleTimer.Instance == null || !MP_CycleTimer.Instance.IsSpawned(true) ||
             MP_FoodSpawner.Instance == null || !MP_FoodSpawner.Instance.IsReadyForPlayers ||
@@ -573,6 +643,15 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         startPending = false;
         startFailure = message;
+    }
+
+    [TargetRpc]
+    private void ReceiveNameRejection(PlayerID target, string reason)
+    {
+        nameAccepted = false;
+        serverReadyToStart = false;
+        startPending = false;
+        nameRejectionReason = reason;
     }
 
     public void NotifyPlayerDeath(PlayerID player, string killerName)

@@ -8,6 +8,7 @@ public class MP_PlayerUI : MonoBehaviour
 
     private void OnEnable()
     {
+        nameText.richText = false;
         playerStats.OnPlayerNameChanged += UpdateNameUI; 
         UpdateNameUI(); 
     }

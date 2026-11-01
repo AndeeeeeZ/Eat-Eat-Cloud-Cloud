@@ -2,6 +2,7 @@ using PurrNet;
 using PurrNet.Transports;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 // Keep this component on an active object outside the panel it hides
@@ -14,6 +15,10 @@ public class MP_StartScreen : MonoBehaviour
     [SerializeField] private Button spectatorButton;
     [SerializeField] private TextMeshProUGUI spectatorButtonText;
     [SerializeField] private Button retryButton;
+    [SerializeField] private GameObject nameRejectionPanel;
+    [SerializeField] private TextMeshProUGUI nameRejectionReasonText;
+
+    private const string LobbySceneName = "LobbyScene";
 
     private NetworkManager connectionManager;
     private ConnectionState? observedClientState;
@@ -31,6 +36,18 @@ public class MP_StartScreen : MonoBehaviour
             return;
         }
 
+        if (nameRejectionPanel == null || nameRejectionPanel == gameObject ||
+            nameRejectionPanel.transform.IsChildOf(startPanel.transform) ||
+            startPanel.transform.IsChildOf(nameRejectionPanel.transform) ||
+            transform.IsChildOf(nameRejectionPanel.transform) ||
+            nameRejectionReasonText == null)
+        {
+            Debug.LogError("Assign a separate name rejection panel and its reason text on MP_StartScreen.", this);
+            enabled = false;
+            return;
+        }
+
+        nameRejectionReasonText.richText = false;
         TrackConnectionManager();
         Refresh();
     }
@@ -102,8 +119,15 @@ public class MP_StartScreen : MonoBehaviour
         bool spectating = MP_SpectatorMode.Instance != null && MP_SpectatorMode.Instance.IsSpectating;
         bool show = !spectating && (local == null ||
             (local.LocalPlayer == null && !local.HasDied));
-        if (startPanel.activeSelf != show)
-            startPanel.SetActive(show);
+        bool showNameRejection = show && manager != null &&
+            !string.IsNullOrEmpty(manager.NameRejectionReason);
+        bool showStartPanel = show && !showNameRejection;
+        if (nameRejectionPanel.activeSelf != showNameRejection)
+            nameRejectionPanel.SetActive(showNameRejection);
+        if (showNameRejection && nameRejectionReasonText.text != manager.NameRejectionReason)
+            nameRejectionReasonText.text = manager.NameRejectionReason;
+        if (startPanel.activeSelf != showStartPanel)
+            startPanel.SetActive(showStartPanel);
 
         ConnectionState clientState = connectionManager != null
             ? connectionManager.clientState : ConnectionState.Disconnected;
@@ -112,7 +136,7 @@ public class MP_StartScreen : MonoBehaviour
         if (retryButton != null && retryButton.gameObject.activeSelf != showRetry)
             retryButton.gameObject.SetActive(showRetry);
 
-        if (!show)
+        if (!show || showNameRejection)
             return;
 
         string status = clientState != ConnectionState.Connected
@@ -167,5 +191,13 @@ public class MP_StartScreen : MonoBehaviour
         connectionFailed = false;
         connectionManager.StartClient();
         Refresh();
+    }
+
+    public void ReturnToLobby()
+    {
+        NetworkManager manager = NetworkManager.main;
+        if (manager != null && manager.isClient)
+            manager.StopClient();
+        SceneManager.LoadScene(LobbySceneName, LoadSceneMode.Single);
     }
 }
