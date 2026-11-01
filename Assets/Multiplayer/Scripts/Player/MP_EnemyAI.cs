@@ -302,7 +302,7 @@ public class MP_EnemyAI : NetworkBehaviour
         fleeWallTarget = null;
         fleeWallDirection = Vector2.zero;
         if (now < nextFoodSearchAt)
-            return SmoothDirection(GetWanderDirection(now));
+            return GetWanderMovementDirection(GetWanderDirection(now));
 
         if (hasFoodDestination)
         {
@@ -311,7 +311,7 @@ public class MP_EnemyAI : NetworkBehaviour
                 return SmoothDirection(toFood.normalized);
         }
 
-        return SmoothDirection(GetFallbackDirection(currentDirection));
+        return GetWanderMovementDirection(currentDirection);
     }
 
     public void RecordFoodEaten()
@@ -341,8 +341,17 @@ public class MP_EnemyAI : NetworkBehaviour
             nextWanderTurnAt = now + Random.Range(0.75f, 1.5f);
         }
 
-        wanderDirection = GetFallbackDirection(wanderDirection);
         return wanderDirection;
+    }
+
+    private Vector2 GetWanderMovementDirection(Vector2 direction)
+    {
+        direction = GetFallbackDirection(direction, out bool avoidingBoundary);
+        if (!avoidingBoundary)
+            return SmoothDirection(direction);
+
+        currentDirection = direction;
+        return direction;
     }
 
     private Vector2 GetFleeDirection(Vector2 offset)
@@ -403,8 +412,9 @@ public class MP_EnemyAI : NetworkBehaviour
         return fleeWallDirection;
     }
 
-    private Vector2 GetFallbackDirection(Vector2 direction)
+    private Vector2 GetFallbackDirection(Vector2 direction, out bool avoidingBoundary)
     {
+        avoidingBoundary = false;
         if (direction.sqrMagnitude < 0.0001f)
         {
             direction = Random.insideUnitCircle.normalized;
@@ -413,18 +423,35 @@ public class MP_EnemyAI : NetworkBehaviour
         }
 
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
-        if (boundary == null)
+        if (boundary == null || !boundary.CanFit(0.01f))
             return direction;
 
         Vector2 position = transform.position;
         Vector2 center = boundary.Center;
         Vector2 extent = boundary.Size * 0.5f;
-        if ((position.x <= center.x - extent.x && direction.x < 0f) ||
-            (position.x >= center.x + extent.x && direction.x > 0f))
-            direction.x = -direction.x;
-        if ((position.y <= center.y - extent.y && direction.y < 0f) ||
-            (position.y >= center.y + extent.y && direction.y > 0f))
-            direction.y = -direction.y;
+        float margin = Mathf.Min(2f, Mathf.Min(extent.x, extent.y) * 0.5f);
+        if (position.x <= center.x - extent.x + margin)
+        {
+            direction.x = Mathf.Max(0.5f, Mathf.Abs(direction.x));
+            avoidingBoundary = true;
+        }
+        else if (position.x >= center.x + extent.x - margin)
+        {
+            direction.x = -Mathf.Max(0.5f, Mathf.Abs(direction.x));
+            avoidingBoundary = true;
+        }
+
+        if (position.y <= center.y - extent.y + margin)
+        {
+            direction.y = Mathf.Max(0.5f, Mathf.Abs(direction.y));
+            avoidingBoundary = true;
+        }
+        else if (position.y >= center.y + extent.y - margin)
+        {
+            direction.y = -Mathf.Max(0.5f, Mathf.Abs(direction.y));
+            avoidingBoundary = true;
+        }
+
         return direction.normalized;
     }
 
