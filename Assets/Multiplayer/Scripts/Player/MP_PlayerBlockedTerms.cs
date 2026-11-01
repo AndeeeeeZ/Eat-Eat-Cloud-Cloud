@@ -209,7 +209,7 @@ internal static class MP_PlayerBlockedTerms
     public static bool ContainsIn(string name)
     {
         string normalized = CompactForMatch(name);
-        if (ContainsTerm(normalized))
+        if (ContainsTerm(normalized) || ContainsTermWithRepeatedLetters(normalized))
             return true;
 
         StringBuilder withoutDigits = new StringBuilder(normalized.Length);
@@ -222,7 +222,9 @@ internal static class MP_PlayerBlockedTerms
                 withoutDigits.Append(character);
         }
 
-        return hasDigit && (ContainsTerm(withoutDigits.ToString()) ||
+        string lettersOnly = withoutDigits.ToString();
+        return hasDigit && (ContainsTerm(lettersOnly) ||
+            ContainsTermWithRepeatedLetters(lettersOnly) ||
             ContainsTermWithLookalikes(normalized));
     }
 
@@ -232,6 +234,70 @@ internal static class MP_PlayerBlockedTerms
         {
             if (name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsTermWithRepeatedLetters(string name)
+    {
+        bool hasRepeatedLetter = false;
+        for (int i = 1; i < name.Length; i++)
+        {
+            if (char.IsLetter(name[i]) &&
+                char.ToLowerInvariant(name[i]) == char.ToLowerInvariant(name[i - 1]))
+            {
+                hasRepeatedLetter = true;
+                break;
+            }
+        }
+
+        if (!hasRepeatedLetter)
+            return false;
+
+        foreach (string term in SearchTerms)
+        {
+            for (int start = 0; start < name.Length; start++)
+            {
+                int nameIndex = start;
+                int termIndex = 0;
+                bool matched = true;
+                while (nameIndex < name.Length && termIndex < term.Length)
+                {
+                    char character = char.ToLowerInvariant(term[termIndex]);
+                    if (char.ToLowerInvariant(name[nameIndex]) != character)
+                    {
+                        matched = false;
+                        break;
+                    }
+
+                    int requiredCount = 0;
+                    while (termIndex < term.Length &&
+                        char.ToLowerInvariant(term[termIndex]) == character)
+                    {
+                        termIndex++;
+                        requiredCount++;
+                    }
+
+                    int actualCount = 0;
+                    while (nameIndex < name.Length &&
+                        char.ToLowerInvariant(name[nameIndex]) == character)
+                    {
+                        nameIndex++;
+                        actualCount++;
+                    }
+
+                    if (actualCount < requiredCount ||
+                        (!char.IsLetter(character) && actualCount != requiredCount))
+                    {
+                        matched = false;
+                        break;
+                    }
+                }
+
+                if (matched && termIndex == term.Length)
+                    return true;
+            }
         }
 
         return false;

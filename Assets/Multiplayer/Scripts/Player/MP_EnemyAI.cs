@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using PurrNet;
 using UnityEngine;
 
@@ -93,7 +94,38 @@ public class MP_EnemyAI : NetworkBehaviour
             ? "Enemy" : activePreset.name.Trim();
         if (baseName.Length > 14)
             baseName = baseName.Substring(0, 14);
-        stats.SetPlayerNameOnServer(baseName + Random.Range(0, 100).ToString("D2"));
+
+        MP_PlayerManager manager = MP_PlayerManager.Instance;
+        HashSet<string> takenNames = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        if (manager != null)
+        {
+            foreach (MP_PlayerManager.PlayerSession session in manager.Sessions.Values)
+            {
+                if (!string.IsNullOrEmpty(session.PlayerName))
+                    takenNames.Add(session.PlayerName);
+            }
+
+            foreach (MP_PlayerStats otherStats in manager.Players)
+            {
+                if (otherStats != null && otherStats != stats)
+                    takenNames.Add(otherStats.PlayerName);
+            }
+        }
+
+        HashSet<string> triedNames = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        int firstSuffix = Random.Range(0, 100);
+        for (int attempt = 0; triedNames.Count <= takenNames.Count; attempt++)
+        {
+            int suffix = attempt < 100 ? (firstSuffix + attempt) % 100 : attempt;
+            string suffixText = suffix.ToString("D2");
+            string candidate = baseName.Substring(0,
+                System.Math.Min(baseName.Length, MP_PlayerNameRules.MaxLength - suffixText.Length)) + suffixText;
+            if (!triedNames.Add(candidate) || takenNames.Contains(candidate))
+                continue;
+
+            stats.SetPlayerNameOnServer(candidate);
+            return;
+        }
     }
 
     protected override void OnDespawned(bool asServer)

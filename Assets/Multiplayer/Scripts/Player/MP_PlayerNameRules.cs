@@ -15,12 +15,12 @@ public static class MP_PlayerNameRules
         }
         if (input.Length > 64)
         {
-            reason = "Name must be 16 characters or fewer.";
+            reason = "Name is too long. Use 16 characters or fewer.";
             return false;
         }
         if (MP_PlayerBlockedTerms.ContainsIn(input))
         {
-            reason = "That name isn't allowed. Please choose another.";
+            reason = "Name contains an inappropriate word. Please choose another.";
             return false;
         }
 
@@ -52,7 +52,7 @@ public static class MP_PlayerNameRules
             builder.Append(character);
             if (builder.Length > MaxLength)
             {
-                reason = "Name must be 16 characters or fewer.";
+                reason = "Name is too long. Use 16 characters or fewer.";
                 return false;
             }
         }
