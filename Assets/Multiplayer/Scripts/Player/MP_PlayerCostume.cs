@@ -1,5 +1,6 @@
 using PurrNet;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class MP_PlayerCostume : NetworkBehaviour
 {
@@ -50,6 +51,16 @@ public class MP_PlayerCostume : NetworkBehaviour
 
     private void Awake()
     {
+        if (GetComponent<SortingGroup>() == null)
+        {
+            SortingGroup sortingGroup = gameObject.AddComponent<SortingGroup>();
+            if (cloudBase != null)
+            {
+                sortingGroup.sortingLayerID = cloudBase.sortingLayerID;
+                sortingGroup.sortingOrder = cloudBase.sortingOrder;
+            }
+        }
+
         indices.onChanged += ApplyCostume;
     }
 
