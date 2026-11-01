@@ -4,14 +4,20 @@ public class MP_GameBoundary : MonoBehaviour
 {
     [SerializeField] private Vector2 size = new(30f, 30f);
     [SerializeField] private bool showBoundaryGizmo = true;
-    [SerializeField] private bool showBoundaryInGame = true;
     [SerializeField, Min(0.01f)] private float boundaryLineWidth = 0.1f;
     [SerializeField] private Color boundaryColor = Color.cyan;
     [SerializeField] private int boundarySortingOrder = 100;
+    [SerializeField, Min(0f)] private float warningDistance = 25f;
+    [SerializeField, Min(0.01f)] private float fadeDistance = 10f;
+    [SerializeField, Min(0.01f)] private float pulseDuration = 1.5f;
 
+    private bool showBoundaryInGame = true;
     private SpriteRenderer[] boundaryLines;
     private Sprite boundarySprite;
     private Texture2D boundaryTexture;
+    private MP_Player trackedPlayer;
+    private CircleCollider2D trackedCollider;
+    private MP_PlayerMovement trackedMovement;
 
     public static MP_GameBoundary Instance { get; private set; }
     public Vector2 Center => transform.position;
@@ -43,19 +49,30 @@ public class MP_GameBoundary : MonoBehaviour
             Destroy(boundaryTexture);
     }
 
+    private void Update()
+    {
+        UpdateBoundaryVisibility();
+    }
+
     private void OnValidate()
     {
         size.x = Mathf.Max(0f, size.x);
         size.y = Mathf.Max(0f, size.y);
         boundaryLineWidth = Mathf.Max(0.01f, boundaryLineWidth);
+        warningDistance = Mathf.Max(0f, warningDistance);
+        fadeDistance = Mathf.Max(0.01f, fadeDistance);
+        pulseDuration = Mathf.Max(0.01f, pulseDuration);
         if (Application.isPlaying)
+        {
             UpdateBoundaryLines();
+            UpdateBoundaryVisibility();
+        }
     }
 
     public void SetInGameBoundaryVisible(bool visible)
     {
         showBoundaryInGame = visible;
-        UpdateBoundaryLines();
+        UpdateBoundaryVisibility();
     }
 
     private void CreateBoundaryLines()
@@ -77,6 +94,7 @@ public class MP_GameBoundary : MonoBehaviour
 
         boundaryLines = lines;
         UpdateBoundaryLines();
+        UpdateBoundaryVisibility();
     }
 
     private void UpdateBoundaryLines()
@@ -102,7 +120,52 @@ public class MP_GameBoundary : MonoBehaviour
         line.transform.localScale = new Vector3(lineSize.x, lineSize.y, 1f);
         line.color = boundaryColor;
         line.sortingOrder = boundarySortingOrder;
-        line.enabled = showBoundaryInGame && Size.x > 0f && Size.y > 0f;
+    }
+
+    private void UpdateBoundaryVisibility()
+    {
+        if (boundaryLines == null || boundaryLines.Length != 4)
+            return;
+
+        float alpha = 0f;
+        MP_LocalPlayerManager local = MP_LocalPlayerManager.Instance;
+        MP_Player player = local != null ? local.LocalPlayer : null;
+        if (player != trackedPlayer)
+        {
+            trackedPlayer = player;
+            trackedCollider = player != null ? player.GetComponent<CircleCollider2D>() : null;
+            trackedMovement = player != null ? player.GetComponent<MP_PlayerMovement>() : null;
+        }
+
+        if (showBoundaryInGame && Size.x > 0f && Size.y > 0f && player != null)
+        {
+            Vector2 position = trackedMovement != null
+                ? trackedMovement.PresentationPosition : (Vector2)player.transform.position;
+            Vector2 offset = position - Center;
+            Vector2 extent = Size * 0.5f;
+            Vector3 scale = player.transform.lossyScale;
+            float radius = trackedCollider != null
+                ? trackedCollider.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y)) : 0f;
+            float edgeDistance = Mathf.Min(extent.x - Mathf.Abs(offset.x),
+                extent.y - Mathf.Abs(offset.y)) - radius;
+            float proximity = Mathf.SmoothStep(0f, 1f,
+                Mathf.Clamp01((warningDistance - edgeDistance) / fadeDistance));
+            float pulse = 0.5f + 0.5f *
+                Mathf.Sin(Time.time * Mathf.PI * 2f / pulseDuration);
+            alpha = proximity * pulse;
+        }
+
+        for (int i = 0; i < boundaryLines.Length; i++)
+        {
+            SpriteRenderer line = boundaryLines[i];
+            if (line == null)
+                continue;
+
+            Color color = boundaryColor;
+            color.a *= alpha;
+            line.color = color;
+            line.enabled = color.a > 0f;
+        }
     }
 
     public bool CanFit(float margin)
