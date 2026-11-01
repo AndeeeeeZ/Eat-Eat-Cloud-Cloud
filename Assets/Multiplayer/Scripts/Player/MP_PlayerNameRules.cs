@@ -18,6 +18,11 @@ public static class MP_PlayerNameRules
             reason = "Name must be 16 characters or fewer.";
             return false;
         }
+        if (MP_PlayerBlockedTerms.ContainsIn(input))
+        {
+            reason = "That name isn't allowed. Please choose another.";
+            return false;
+        }
 
         StringBuilder builder = new StringBuilder(MaxLength);
         bool pendingSpace = false;
@@ -54,16 +59,7 @@ public static class MP_PlayerNameRules
 
         name = builder.ToString();
         if (name.Length > 0)
-        {
-            if (MP_PlayerBlockedTerms.ContainsIn(name))
-            {
-                name = "";
-                reason = "That name isn't allowed. Please choose another.";
-                return false;
-            }
-
             return true;
-        }
 
         reason = "Enter a name before starting.";
         return false;

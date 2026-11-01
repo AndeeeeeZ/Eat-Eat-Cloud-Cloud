@@ -197,7 +197,7 @@ internal static class MP_PlayerBlockedTerms
         HashSet<string> normalizedTerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string term in Terms)
         {
-            string normalized = NormalizeSeparators(term);
+            string normalized = CompactForMatch(term);
             if (normalized.Length > 0)
                 normalizedTerms.Add(normalized);
         }
@@ -208,35 +208,83 @@ internal static class MP_PlayerBlockedTerms
 
     public static bool ContainsIn(string name)
     {
-        string normalized = NormalizeSeparators(name);
+        string normalized = CompactForMatch(name);
+        if (ContainsTerm(normalized))
+            return true;
+
+        StringBuilder withoutDigits = new StringBuilder(normalized.Length);
+        bool hasDigit = false;
+        foreach (char character in normalized)
+        {
+            if (character >= '0' && character <= '9')
+                hasDigit = true;
+            else
+                withoutDigits.Append(character);
+        }
+
+        return hasDigit && (ContainsTerm(withoutDigits.ToString()) ||
+            ContainsTermWithLookalikes(normalized));
+    }
+
+    private static bool ContainsTerm(string name)
+    {
         foreach (string term in SearchTerms)
         {
-            if (normalized.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
         }
 
         return false;
     }
 
-    private static string NormalizeSeparators(string value)
+    private static bool ContainsTermWithLookalikes(string name)
+    {
+        foreach (string term in SearchTerms)
+        {
+            for (int start = 0; start <= name.Length - term.Length; start++)
+            {
+                int index = 0;
+                for (; index < term.Length; index++)
+                {
+                    char actual = char.ToLowerInvariant(name[start + index]);
+                    char expected = char.ToLowerInvariant(term[index]);
+                    if (actual != expected && !DigitLooksLikeLetter(actual, expected))
+                        break;
+                }
+
+                if (index == term.Length)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool DigitLooksLikeLetter(char digit, char letter)
+    {
+        switch (digit)
+        {
+            case '0': return letter == 'o';
+            case '1': return letter == 'i' || letter == 'l';
+            case '2': return letter == 'z';
+            case '3': return letter == 'e';
+            case '4': return letter == 'a';
+            case '5': return letter == 's';
+            case '6': return letter == 'b' || letter == 'g';
+            case '7': return letter == 't';
+            case '8': return letter == 'b';
+            case '9': return letter == 'g' || letter == 'q';
+            default: return false;
+        }
+    }
+
+    private static string CompactForMatch(string value)
     {
         StringBuilder builder = new StringBuilder(value.Length);
-        bool pendingSpace = false;
         foreach (char character in value)
         {
-            if (character == '_' || character == '-' || char.IsWhiteSpace(character))
-            {
-                pendingSpace = builder.Length > 0;
-                continue;
-            }
-
-            if (pendingSpace)
-            {
-                builder.Append(' ');
-                pendingSpace = false;
-            }
-
-            builder.Append(character);
+            if (char.IsLetterOrDigit(character))
+                builder.Append(character);
         }
 
         return builder.ToString();
