@@ -188,7 +188,9 @@ public class MP_SpectatorMode : MonoBehaviour
     private void FollowPlayer(MP_Player player)
     {
         viewedPlayer = player;
-        cameraController.SetTarget(player.transform);
+        MP_PlayerMovement movement = player.GetComponent<MP_PlayerMovement>();
+        cameraController.SetTarget(movement != null
+            ? movement.PresentationTarget : player.transform);
         UpdateViewedPlayerText();
     }
 

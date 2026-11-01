@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using PurrNet;
 using UnityEngine;
 
-// Server controls gameplay movement; the owner predicts visuals only
+// Server controls gameplay movement; clients adjust visuals only
 [DefaultExecutionOrder(-1)]
 [RequireComponent(typeof(MP_PlayerInput))]
 public class MP_PlayerMovement : NetworkBehaviour
@@ -12,6 +12,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     private MP_EnemyAI enemyAI;
     private MP_Player player;
     private MP_PlayerGrowth playerGrowth;
+    private MP_PlayerEating playerEating;
     private CircleCollider2D bodyCollider;
     private MP_Ping ping;
     private Transform[] visualChildren;
@@ -19,6 +20,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     private Transform presentationTarget;
     private Vector2 presentationPosition;
     private Vector2 previousServerPosition;
+    private Vector2 remoteVelocity;
     private bool presentationInitialized;
     private float predictionLeadSeconds = 0.12f;
     private double nextPingLookupAt;
@@ -29,7 +31,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     {
         get
         {
-            if (isServer || !isOwner || enemyAI != null)
+            if (isServer)
                 return transform;
 
             if (presentationTarget == null)
@@ -52,6 +54,7 @@ public class MP_PlayerMovement : NetworkBehaviour
         enemyAI = GetComponent<MP_EnemyAI>();
         player = GetComponent<MP_Player>();
         playerGrowth = GetComponent<MP_PlayerGrowth>();
+        playerEating = GetComponentInChildren<MP_PlayerEating>();
         bodyCollider = GetComponent<CircleCollider2D>();
         CacheVisualChildren();
     }
@@ -86,11 +89,13 @@ public class MP_PlayerMovement : NetworkBehaviour
         if (foodSpawner != null && player != null && player.IsAlive)
             foodSpawner.ConsumeFoodAlongPath(player, playerGrowth, bodyCollider,
                 previousPosition, nextPosition, enemyAI);
+        if (playerEating != null && player != null && player.IsAlive)
+            playerEating.TryEatAlongPath(previousPosition, nextPosition);
     }
 
     private void LateUpdate()
     {
-        if (!isSpawned || !isClient || !isOwner || isServer || enemyAI != null)
+        if (!isSpawned || !isClient || isServer)
             return;
 
         Vector2 serverPosition = transform.position;
@@ -104,6 +109,24 @@ public class MP_PlayerMovement : NetworkBehaviour
         if ((serverPosition - previousServerPosition).sqrMagnitude > 0.000001f)
             lastServerMovedAt = Time.timeAsDouble;
 
+        if (isOwner && enemyAI == null)
+            UpdateOwnerPresentation(serverPosition);
+        else
+            UpdateRemotePresentation(serverPosition);
+
+        Vector3 worldOffset = (Vector3)(presentationPosition - serverPosition);
+        Vector3 localOffset = transform.InverseTransformVector(worldOffset);
+        for (int i = 0; i < visualChildren.Length; i++)
+            visualChildren[i].localPosition = visualLocalPositions[i] + localOffset;
+
+        if (presentationTarget != null)
+            presentationTarget.position = transform.position + worldOffset;
+
+        previousServerPosition = serverPosition;
+    }
+
+    private void UpdateOwnerPresentation(Vector2 serverPosition)
+    {
         float speedMultiplier = MP_CycleTimer.Instance != null
             ? MP_CycleTimer.Instance.SpeedMultiplier : 1f;
         float speed = baseMoveSpeed != null ? baseMoveSpeed.Value * speedMultiplier : 0f;
@@ -119,6 +142,12 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         predictionLeadSeconds = Mathf.MoveTowards(predictionLeadSeconds,
             GetPredictionLeadSeconds(), Time.deltaTime * 0.25f);
+        if (direction.sqrMagnitude > 0f)
+        {
+            Vector2 target = serverPosition + direction * (speed * predictionLeadSeconds);
+            presentationPosition = Vector2.Lerp(presentationPosition, target,
+                1f - Mathf.Exp(-8f * Time.deltaTime));
+        }
         double idleSeconds = Time.timeAsDouble - lastInputAt;
         bool serverSettled = lastServerMovedAt > lastInputAt &&
             Time.timeAsDouble - lastServerMovedAt > 0.05d;
@@ -131,16 +160,33 @@ public class MP_PlayerMovement : NetworkBehaviour
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         if (boundary != null)
             presentationPosition = boundary.ClampPosition(presentationPosition);
+    }
 
-        Vector3 worldOffset = (Vector3)(presentationPosition - serverPosition);
-        Vector3 localOffset = transform.InverseTransformVector(worldOffset);
-        for (int i = 0; i < visualChildren.Length; i++)
-            visualChildren[i].localPosition = visualLocalPositions[i] + localOffset;
+    private void UpdateRemotePresentation(Vector2 serverPosition)
+    {
+        float deltaTime = Time.deltaTime;
+        if (deltaTime <= 0f)
+            return;
 
-        if (presentationTarget != null)
-            presentationTarget.position = transform.position + worldOffset;
+        float baseSpeed = baseMoveSpeed != null ? baseMoveSpeed.Value : 0f;
+        float cycleSpeed = MP_CycleTimer.Instance != null
+            ? MP_CycleTimer.Instance.SpeedMultiplier : 1f;
+        float maximumSpeed = Mathf.Max(1f, baseSpeed * cycleSpeed * 1.25f);
+        Vector2 displacement = serverPosition - previousServerPosition;
+        if (displacement.magnitude > Mathf.Max(2f, maximumSpeed * deltaTime * 4f))
+        {
+            presentationPosition = serverPosition;
+            remoteVelocity = Vector2.zero;
+            return;
+        }
 
-        previousServerPosition = serverPosition;
+        Vector2 observedVelocity = Vector2.ClampMagnitude(displacement / deltaTime,
+            maximumSpeed);
+        remoteVelocity = Vector2.Lerp(remoteVelocity, observedVelocity,
+            1f - Mathf.Exp(-12f * deltaTime));
+        Vector2 target = serverPosition + remoteVelocity * 0.05f;
+        presentationPosition = Vector2.Lerp(presentationPosition, target,
+            1f - Mathf.Exp(-20f * deltaTime));
     }
 
     private float GetPredictionLeadSeconds()
@@ -183,6 +229,7 @@ public class MP_PlayerMovement : NetworkBehaviour
             presentationInitialized = false;
             presentationPosition = Vector2.zero;
             previousServerPosition = Vector2.zero;
+            remoteVelocity = Vector2.zero;
             lastServerMovedAt = 0d;
             predictionLeadSeconds = 0.12f;
             for (int i = 0; i < visualChildren.Length; i++)

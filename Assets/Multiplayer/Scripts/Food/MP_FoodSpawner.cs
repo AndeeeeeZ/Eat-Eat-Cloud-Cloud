@@ -876,7 +876,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             {
                 if (!warnedNoSpawnPosition)
                 {
-                    Debug.LogWarning("No hidden collision-free food position was found within the search budget", this);
+                    Debug.LogWarning("No collision-free food position outside occupied player grid cells was found within the search budget", this);
                     warnedNoSpawnPosition = true;
                 }
 
@@ -1145,7 +1145,7 @@ public class MP_FoodSpawner : NetworkBehaviour
                 UnityEngine.Random.Range(region.Bounds.yMin + radius, region.Bounds.yMax - radius)
             );
 
-            if (!IsOutsideAllPlayerViews(position, radius) ||
+            if (IsInOccupiedPlayerCell(position) ||
                 !IsClear(position, radius, boundary))
                 continue;
 
@@ -1162,7 +1162,7 @@ public class MP_FoodSpawner : NetworkBehaviour
                 position + baseFoodHitOffset * sizeMultiplier,
                 baseFoodHitRadius * sizeMultiplier, cycle, sizeMultiplier,
                 baseFoodExperience * Mathf.Max(1f, expMultiplier), edibleAt,
-                false, cellIndex);
+                true, cellIndex);
             foodRecords.Add(foodId, record);
             AddRecordToCell(foodId, cellIndex);
             AddRecordToChunk(foodId, GetChunkIndex(cellIndex));
@@ -1187,6 +1187,24 @@ public class MP_FoodSpawner : NetworkBehaviour
     private float GetFoodRadius(float sizeMultiplier)
     {
         return baseFoodRadius * sizeMultiplier;
+    }
+
+    private bool IsInOccupiedPlayerCell(Vector2 position)
+    {
+        MP_PlayerManager manager = MP_PlayerManager.Instance;
+        if (manager == null)
+            return false;
+
+        int cell = GetCellIndex(position, indexedBoundaryCenter, indexedBoundarySize);
+        foreach (MP_PlayerStats stats in manager.Players)
+        {
+            if (stats != null &&
+                GetCellIndex(stats.transform.position, indexedBoundaryCenter,
+                    indexedBoundarySize) == cell)
+                return true;
+        }
+
+        return false;
     }
 
     private bool IsOutsideAllPlayerViews(Vector2 position, float foodRadius)
