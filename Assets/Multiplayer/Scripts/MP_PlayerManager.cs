@@ -30,7 +30,6 @@ public class MP_PlayerManager : NetworkBehaviour
 
     private const float StartReadinessRetrySeconds = 1f;
     private const float StartRequestTimeoutSeconds = 10f;
-    private const float RoundResultSeconds = 8f;
     private bool nameAccepted;
     private bool serverReadyToStart;
     private bool startPending;
@@ -101,7 +100,6 @@ public class MP_PlayerManager : NetworkBehaviour
     private bool resettingRound;
     private bool resetPending;
     private bool observedRoundEnded;
-    private double roundResetAt;
     // Populated on the server only. Counts include living AI clouds
     public IReadOnlyDictionary<PlayerID, PlayerSession> Sessions => sessions;
     private NetworkManager sessionNetworkManager;
@@ -189,7 +187,6 @@ public class MP_PlayerManager : NetworkBehaviour
         roundStandings.Clear();
         pendingClouds.Clear();
         resetPending = false;
-        roundResetAt = 0d;
         nextRespawnPoint = 0;
         playerCount.value = 0;
         aiPlayerCount.value = 0;
@@ -215,8 +212,7 @@ public class MP_PlayerManager : NetworkBehaviour
 
         if (RoundEnded)
         {
-            if (roundResetAt > 0d && Time.realtimeSinceStartupAsDouble >= roundResetAt)
-                ResetRound();
+            ResetRound();
             return;
         }
 
@@ -311,7 +307,6 @@ public class MP_PlayerManager : NetworkBehaviour
         });
 
         roundEnded.value = true;
-        roundResetAt = Time.realtimeSinceStartupAsDouble + RoundResultSeconds;
         foreach (PlayerSession session in sessions.Values)
             session.CanRespawn = false;
 
@@ -481,7 +476,6 @@ public class MP_PlayerManager : NetworkBehaviour
                 enemySpawner.ResetRound();
 
             MP_CycleTimer.Instance?.ResetRound();
-            roundResetAt = 0d;
             roundEnded.value = false;
             MP_Leaderboard[] leaderboards = FindObjectsByType<MP_Leaderboard>(FindObjectsSortMode.None);
             foreach (MP_Leaderboard leaderboard in leaderboards)
