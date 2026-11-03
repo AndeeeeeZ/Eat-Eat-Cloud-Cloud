@@ -6,9 +6,9 @@ public class MP_MiniMap : MonoBehaviour
     [SerializeField] private RectTransform playerIndicatorRoot;
     [SerializeField] private UnityEngine.UI.Image playerIndicator;
 
-    private MP_Player localPlayer;
-    private MP_PlayerMovement localMovement;
-    private MP_PlayerCostume localCostume;
+    private MP_Player displayedPlayer;
+    private MP_PlayerMovement displayedMovement;
+    private MP_PlayerCostume displayedCostume;
 
     private void OnEnable()
     {
@@ -37,29 +37,33 @@ public class MP_MiniMap : MonoBehaviour
     private void LateUpdate()
     {
         MP_LocalPlayerManager manager = MP_LocalPlayerManager.Instance;
-        MP_Player player = manager != null ? manager.LocalPlayer : null;
+        MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
+        MP_Player player = spectator != null && spectator.IsSpectating
+            ? spectator.ViewedPlayer : manager != null ? manager.LocalPlayer : null;
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         if (player == null || boundary == null || boundary.Size.x <= 0f || boundary.Size.y <= 0f)
         {
             playerIndicator.enabled = false;
-            localPlayer = null;
+            displayedPlayer = null;
+            displayedMovement = null;
+            displayedCostume = null;
             return;
         }
 
-        if (player != localPlayer)
+        if (player != displayedPlayer)
         {
-            localPlayer = player;
-            localMovement = player.GetComponent<MP_PlayerMovement>();
-            localCostume = player.GetComponent<MP_PlayerCostume>();
+            displayedPlayer = player;
+            displayedMovement = player.GetComponent<MP_PlayerMovement>();
+            displayedCostume = player.GetComponent<MP_PlayerCostume>();
         }
 
-        Sprite cloudBase = localCostume != null ? localCostume.CloudBaseSprite : null;
+        Sprite cloudBase = displayedCostume != null ? displayedCostume.CloudBaseSprite : null;
         if (playerIndicator.sprite != cloudBase)
             playerIndicator.sprite = cloudBase;
         playerIndicator.enabled = cloudBase != null;
 
-        Vector2 worldPosition = localMovement != null
-            ? localMovement.PresentationPosition : (Vector2)player.transform.position;
+        Vector2 worldPosition = displayedMovement != null
+            ? displayedMovement.PresentationPosition : (Vector2)player.transform.position;
         Vector2 normalized = worldPosition - boundary.Center;
         Vector2 size = boundary.Size;
         normalized.x = Mathf.Clamp01(normalized.x / size.x + 0.5f);
@@ -75,8 +79,8 @@ public class MP_MiniMap : MonoBehaviour
     {
         if (playerIndicator != null)
             playerIndicator.enabled = false;
-        localPlayer = null;
-        localMovement = null;
-        localCostume = null;
+        displayedPlayer = null;
+        displayedMovement = null;
+        displayedCostume = null;
     }
 }
