@@ -23,10 +23,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 376cabf288d4284429e5b7d0b184c54d, type: 3}
   - {fileID: 21300000, guid: 99860f0942ff7134c81e681043797412, type: 3}
   - {fileID: 21300000, guid: 1ac18a0466f0ca1459102f75dedb0518, type: 3}
-  - {fileID: 21300000, guid: 9f0a71711c175a94ba26b79b699a9582, type: 3}
-  - {fileID: 21300000, guid: f96a10c5a83082f459fa407e31bcd543, type: 3}
-  - {fileID: 21300000, guid: 0ec9dbd5db2b0fa4082e62f80f75fb19, type: 3}
-  - {fileID: 21300000, guid: 6023ee7a98c134049b4416a19b202d31, type: 3}
+  - {fileID: 21300000, guid: 0f1ab0a2e89d318418d0ac9e1935a2ec, type: 3}
   bottoms:
   - {fileID: 0}
   - {fileID: 21300000, guid: 20ac593243f32ed4aaa0543490d30d7d, type: 3}
@@ -49,4 +46,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: f9763d58374d42547b1dc1bb8475862e, type: 3}
   - {fileID: 21300000, guid: 13e19cab1a8302d4d85827f1829c4b73, type: 3}
   - {fileID: 21300000, guid: de8803ffb706f434bb6ff0e7ddf9f565, type: 3}
+  baseColorIndex: 0
+  ringColorIndex: 0
+  baseColors:
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 1, g: 0.56078434, b: 0.59352124, a: 1}
+  - {r: 1, g: 0.82795316, b: 0.56078434, a: 1}
+  - {r: 1, g: 0.98668563, b: 0.56078434, a: 1}
+  - {r: 1, g: 0.56078434, b: 0.86998254, a: 1}
+  - {r: 0.7432193, g: 0.6839622, b: 1, a: 1}
+  - {r: 0.56078434, g: 0.72358584, b: 1, a: 1}
+  - {r: 0.5613208, g: 1, b: 0.93669313, a: 1}
+  - {r: 0.5750139, g: 1, b: 0.56078434, a: 1}
+  ringColors:
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 1, g: 0.56078434, b: 0.5921569, a: 1}
+  - {r: 1, g: 0.82745105, b: 0.56078434, a: 1}
+  - {r: 1, g: 0.98823535, b: 0.56078434, a: 1}
+  - {r: 1, g: 0.56078434, b: 0.8705883, a: 1}
+  - {r: 0.8122052, g: 0.7688679, b: 1, a: 1}
+  - {r: 0.56078434, g: 0.7254902, b: 1, a: 1}
+  - {r: 0.56078434, g: 1, b: 0.93725497, a: 1}
+  - {r: 0.5764706, g: 1, b: 0.56078434, a: 1}
+  - {r: 1, g: 0.3915094, b: 0.4051526, a: 1}
+  - {r: 0.3726415, g: 0.9352949, b: 1, a: 1}
+  - {r: 1, g: 0.82470495, b: 0.13679248, a: 1}
+  - {r: 0.09433961, g: 0.09433961, b: 0.09433961, a: 1}
+  ringSprite: {fileID: 21300000, guid: cd5cd869982e47d4791dbb96ff068b95, type: 3}
   OnCostumeChanged: {fileID: 11400000, guid: 5fee20f3afdacc94ca4460c008704351, type: 2}

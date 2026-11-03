@@ -11,6 +11,7 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Image rightSide;
     [SerializeField] private UnityEngine.UI.Image leftSide;
     [SerializeField] private UnityEngine.UI.Image face;
+    [SerializeField] private UnityEngine.UI.Image ring;
 
     [Header("Jump")]
     [SerializeField] private RectTransform jumpTarget;
@@ -63,6 +64,16 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
 
         MP_CostumeIndices look = player.Costume;
         SetSprite(cloudBase, catalog != null ? catalog.cloudBases : null, look.CloudBase);
+        if (cloudBase != null)
+            cloudBase.color = catalog != null
+                ? PlayerCostume.GetColor(catalog.baseColors, look.BaseColor) : Color.white;
+        if (ring != null)
+        {
+            ring.sprite = catalog != null ? catalog.ringSprite : null;
+            ring.enabled = ring.sprite != null;
+            ring.color = catalog != null
+                ? PlayerCostume.GetColor(catalog.ringColors, look.RingColor) : Color.white;
+        }
         SetSprite(bottom, catalog != null ? catalog.bottoms : null, look.Bottom);
         SetSprite(rightSide, catalog != null ? catalog.rightSides : null, look.Right);
         SetSprite(leftSide, catalog != null ? catalog.leftSides : null, look.Left);

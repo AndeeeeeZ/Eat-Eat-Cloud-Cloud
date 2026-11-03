@@ -9,10 +9,12 @@ public class MP_CostumePicker : MonoBehaviour
     [Header("Preview")]
     [SerializeField] private UnityEngine.UI.Image cloudBase;
     [SerializeField] private UnityEngine.UI.Image bottom, rightSide, leftSide, face;
+    [SerializeField] private UnityEngine.UI.Image ring;
 
     [Header("Index Labels")]
     [SerializeField] private TextMeshProUGUI cloudBaseIndex;
     [SerializeField] private TextMeshProUGUI bottomIndex, rightIndex, leftIndex, faceIndex;
+    [SerializeField] private TextMeshProUGUI baseColorIndex, ringColorIndex;
 
     private void Start()
     {
@@ -70,6 +72,26 @@ public class MP_CostumePicker : MonoBehaviour
         SetSelection(selection);
     }
 
+    public void CycleBaseColor(int diff)
+    {
+        if (playerData == null || catalog == null)
+            return;
+
+        MP_CostumeIndices selection = playerData.Costume;
+        selection.BaseColor = Cycle(selection.BaseColor, catalog.baseColors, diff);
+        SetSelection(selection);
+    }
+
+    public void CycleRingColor(int diff)
+    {
+        if (playerData == null || catalog == null)
+            return;
+
+        MP_CostumeIndices selection = playerData.Costume;
+        selection.RingColor = Cycle(selection.RingColor, catalog.ringColors, diff);
+        SetSelection(selection);
+    }
+
     public void Randomize()
     {
         if (playerData == null || catalog == null)
@@ -81,7 +103,9 @@ public class MP_CostumePicker : MonoBehaviour
             Bottom = RandomIndex(catalog.bottoms),
             Right = RandomIndex(catalog.rightSides),
             Left = RandomIndex(catalog.leftSides),
-            Face = RandomIndex(catalog.faces)
+            Face = RandomIndex(catalog.faces),
+            BaseColor = RandomIndex(catalog.baseColors),
+            RingColor = RandomIndex(catalog.ringColors)
         });
     }
 
@@ -107,9 +131,23 @@ public class MP_CostumePicker : MonoBehaviour
         return next < 0 ? next + sprites.Length : next;
     }
 
+    private static int Cycle(int current, Color[] colors, int diff)
+    {
+        if (colors == null || colors.Length == 0)
+            return 0;
+
+        int next = (current + diff) % colors.Length;
+        return next < 0 ? next + colors.Length : next;
+    }
+
     private static int RandomIndex(Sprite[] sprites)
     {
         return sprites == null || sprites.Length == 0 ? 0 : Random.Range(0, sprites.Length);
+    }
+
+    private static int RandomIndex(Color[] colors)
+    {
+        return colors == null || colors.Length == 0 ? 0 : Random.Range(0, colors.Length);
     }
 
     private void RefreshPreview()
@@ -122,6 +160,11 @@ public class MP_CostumePicker : MonoBehaviour
 
         MP_CostumeIndices selection = playerData.Costume;
         SetPreviewImage(cloudBase, GetSprite(catalog.cloudBases, selection.CloudBase));
+        if (cloudBase != null)
+            cloudBase.color = PlayerCostume.GetColor(catalog.baseColors, selection.BaseColor);
+        SetPreviewImage(ring, catalog.ringSprite);
+        if (ring != null)
+            ring.color = PlayerCostume.GetColor(catalog.ringColors, selection.RingColor);
         SetPreviewImage(bottom, GetSprite(catalog.bottoms, selection.Bottom));
         SetPreviewImage(rightSide, GetSprite(catalog.rightSides, selection.Right));
         SetPreviewImage(leftSide, GetSprite(catalog.leftSides, selection.Left));
@@ -137,6 +180,10 @@ public class MP_CostumePicker : MonoBehaviour
             leftIndex.text = selection.Left.ToString();
         if (faceIndex != null)
             faceIndex.text = selection.Face.ToString();
+        if (baseColorIndex != null)
+            baseColorIndex.text = selection.BaseColor.ToString();
+        if (ringColorIndex != null)
+            ringColorIndex.text = selection.RingColor.ToString();
     }
 
     private static Sprite GetSprite(Sprite[] sprites, int index)

@@ -6,10 +6,12 @@ public class MP_PlayerCostume : NetworkBehaviour
 {
     [SerializeField] private PlayerCostume catalog;
     [SerializeField] private SpriteRenderer cloudBase, bottom, rightSide, leftSide, face;
+    [SerializeField] private SpriteRenderer ring;
 
     private readonly SyncVar<MP_CostumeIndices> indices = new(default);
     public MP_CostumeIndices CurrentIndices => indices.value;
     public Sprite CloudBaseSprite => cloudBase != null ? cloudBase.sprite : null;
+    public Color CloudBaseColor => cloudBase != null ? cloudBase.color : Color.white;
 
     public bool IsValid(MP_CostumeIndices selection)
     {
@@ -19,7 +21,9 @@ public class MP_PlayerCostume : NetworkBehaviour
             IsIndexValid(catalog.bottoms, selection.Bottom) &&
             IsIndexValid(catalog.rightSides, selection.Right) &&
             IsIndexValid(catalog.leftSides, selection.Left) &&
-            IsIndexValid(catalog.faces, selection.Face);
+            IsIndexValid(catalog.faces, selection.Face) &&
+            PlayerCostume.IsColorIndexValid(catalog.baseColors, selection.BaseColor) &&
+            PlayerCostume.IsColorIndexValid(catalog.ringColors, selection.RingColor);
     }
 
     public bool SetCostumeOnServer(MP_CostumeIndices selection)
@@ -42,13 +46,20 @@ public class MP_PlayerCostume : NetworkBehaviour
             Bottom = Random.Range(0, catalog.bottoms.Length),
             Right = Random.Range(0, catalog.rightSides.Length),
             Left = Random.Range(0, catalog.leftSides.Length),
-            Face = Random.Range(0, catalog.faces.Length)
+            Face = Random.Range(0, catalog.faces.Length),
+            BaseColor = RandomColorIndex(catalog.baseColors),
+            RingColor = RandomColorIndex(catalog.ringColors)
         });
     }
 
     private static bool IsIndexValid(Sprite[] sprites, int index)
     {
         return sprites != null && index >= 0 && index < sprites.Length;
+    }
+
+    private static int RandomColorIndex(Color[] colors)
+    {
+        return colors == null || colors.Length == 0 ? 0 : Random.Range(0, colors.Length);
     }
 
     private void Awake()
@@ -79,7 +90,15 @@ public class MP_PlayerCostume : NetworkBehaviour
             return;
 
         if (cloudBase != null)
+        {
             cloudBase.sprite = catalog.cloudBases[selection.CloudBase];
+            cloudBase.color = PlayerCostume.GetColor(catalog.baseColors, selection.BaseColor);
+        }
+        if (ring != null)
+        {
+            ring.sprite = catalog.ringSprite;
+            ring.color = PlayerCostume.GetColor(catalog.ringColors, selection.RingColor);
+        }
         if (bottom != null)
             bottom.sprite = catalog.bottoms[selection.Bottom];
         if (rightSide != null)

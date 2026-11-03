@@ -3,9 +3,12 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "PlayerCostume")]
 public class PlayerCostume : ScriptableObject
 {
-    // index 0 = none
+    // index 0 = none for optional sprite arrays
     public int cloudBaseIndex, bottomIndex, rightIndex, leftIndex, faceIndex;
     public Sprite[] cloudBases, bottoms, rightSides, leftSides, faces;
+    public int baseColorIndex, ringColorIndex;
+    public Color[] baseColors, ringColors;
+    public Sprite ringSprite;
 
     [SerializeField] private VoidEvent OnCostumeChanged;
 
@@ -14,6 +17,8 @@ public class PlayerCostume : ScriptableObject
     public Sprite GetRight() => GetFrom(rightSides, rightIndex);
     public Sprite GetLeft() => GetFrom(leftSides, leftIndex);
     public Sprite GetFace() => GetFrom(faces, faceIndex);
+    public Color GetBaseColor() => GetColor(baseColors, baseColorIndex);
+    public Color GetRingColor() => GetColor(ringColors, ringColorIndex);
 
     // diff = 1 => get next
     // diff = -1 => get prev
@@ -23,6 +28,20 @@ public class PlayerCostume : ScriptableObject
     public void CycleRight(int diff) => CycleIndex(rightSides, ref rightIndex, diff);
     public void CycleLeft(int diff) => CycleIndex(leftSides, ref leftIndex, diff);
     public void CycleFace(int diff) => CycleIndex(faces, ref faceIndex, diff);
+    public void CycleBaseColor(int diff) => CycleColorIndex(baseColors, ref baseColorIndex, diff);
+    public void CycleRingColor(int diff) => CycleColorIndex(ringColors, ref ringColorIndex, diff);
+
+    public static Color GetColor(Color[] colors, int index)
+    {
+        return colors != null && index >= 0 && index < colors.Length
+            ? colors[index] : Color.white;
+    }
+
+    public static bool IsColorIndexValid(Color[] colors, int index)
+    {
+        return colors == null || colors.Length == 0
+            ? index == 0 : index >= 0 && index < colors.Length;
+    }
 
     private Sprite GetFrom(Sprite[] arr, int index)
     {
@@ -44,6 +63,13 @@ public class PlayerCostume : ScriptableObject
         OnCostumeChanged.Raise();
     }
 
+    private void CycleColorIndex(Color[] colors, ref int index, int diff)
+    {
+        int count = colors == null || colors.Length == 0 ? 1 : colors.Length;
+        index = ((index + diff) % count + count) % count;
+        OnCostumeChanged.Raise();
+    }
+
     public void GetRandom()
     {
         cloudBaseIndex = Random.Range(0, cloudBases.Length); 
@@ -51,6 +77,8 @@ public class PlayerCostume : ScriptableObject
         faceIndex = Random.Range(0, faces.Length); 
         leftIndex = Random.Range(0, leftSides.Length); 
         rightIndex = Random.Range(0, rightSides.Length); 
+        baseColorIndex = baseColors == null || baseColors.Length == 0 ? 0 : Random.Range(0, baseColors.Length);
+        ringColorIndex = ringColors == null || ringColors.Length == 0 ? 0 : Random.Range(0, ringColors.Length);
 
         OnCostumeChanged.Raise(); 
     }
@@ -59,6 +87,7 @@ public class PlayerCostume : ScriptableObject
     public void Reset()
     {
         cloudBaseIndex = bottomIndex = rightIndex = leftIndex = faceIndex = 0;
+        baseColorIndex = ringColorIndex = 0;
         OnCostumeChanged.Raise();
     }
 }

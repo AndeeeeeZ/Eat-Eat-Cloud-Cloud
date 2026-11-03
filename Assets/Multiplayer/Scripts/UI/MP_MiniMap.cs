@@ -60,6 +60,10 @@ public class MP_MiniMap : MonoBehaviour
         Sprite cloudBase = displayedCostume != null ? displayedCostume.CloudBaseSprite : null;
         if (playerIndicator.sprite != cloudBase)
             playerIndicator.sprite = cloudBase;
+        Color cloudColor = displayedCostume != null
+            ? displayedCostume.CloudBaseColor : Color.white;
+        if (playerIndicator.color != cloudColor)
+            playerIndicator.color = cloudColor;
         playerIndicator.enabled = cloudBase != null;
 
         Vector2 worldPosition = displayedMovement != null
