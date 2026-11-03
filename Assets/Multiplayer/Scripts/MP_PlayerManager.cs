@@ -5,29 +5,6 @@ using System;
 using PurrNet.Packing;
 using UnityEngine.SceneManagement;
 
-public struct MP_RoundResult : IPackedAuto, IEquatable<MP_RoundResult>
-{
-    public bool HasEnded;
-    public bool HasWinner;
-    public string WinnerName;
-    public ulong WinnerObjectId;
-
-    public MP_RoundResult(string winnerName, ulong winnerObjectId)
-    {
-        HasEnded = true;
-        HasWinner = true;
-        WinnerName = winnerName;
-        WinnerObjectId = winnerObjectId;
-    }
-
-    public bool Equals(MP_RoundResult other)
-    {
-        return HasEnded == other.HasEnded && HasWinner == other.HasWinner &&
-            WinnerName == other.WinnerName &&
-            WinnerObjectId == other.WinnerObjectId;
-    }
-}
-
 public struct MP_RoundStanding : IPackedAuto
 {
     public PlayerID OwnerId;
@@ -49,9 +26,6 @@ public class MP_PlayerManager : NetworkBehaviour
     [SerializeField] private PlayerSpawner spawnPointsSource;
     [SerializeField] private MP_PlayerData localPlayerData;
     [SerializeField] private string resultsSceneName = "";
-    private bool resultsSceneUnavailable;
-    public bool UsesResultsScene => !string.IsNullOrWhiteSpace(resultsSceneName) &&
-        !resultsSceneUnavailable;
     private int nextRespawnPoint;
 
     private const float StartReadinessRetrySeconds = 1f;
@@ -77,13 +51,8 @@ public class MP_PlayerManager : NetworkBehaviour
     private readonly List<MP_PlayerStats> players = new();
     private readonly List<MP_RoundStanding> roundStandings = new();
     public IReadOnlyList<MP_PlayerStats> Players => players;
-    private readonly SyncVar<MP_RoundResult> roundResult = new(default);
-    public bool RoundEnded => isSpawned && roundResult.value.HasEnded;
-    public bool HasWinner => RoundEnded && roundResult.value.HasWinner;
-    public string WinnerName => roundResult.value.WinnerName ?? "";
-    public bool IsWinner(MP_Player player) => HasWinner &&
-        player != null &&
-        player.objectId == roundResult.value.WinnerObjectId;
+    private readonly SyncVar<bool> roundEnded = new(false);
+    public bool RoundEnded => isSpawned && roundEnded.value;
     public bool CanStart => localPlayerData != null && IsClientPrepared() &&
         nameAccepted && serverReadyToStart && !startPending &&
         !RoundEnded && MP_CycleTimer.Instance.CurrentCycle <= 1 &&
@@ -140,7 +109,6 @@ public class MP_PlayerManager : NetworkBehaviour
     public event Action<int> OnPlayerCountChanged;
     public event Action<int> OnAIPlayerCountChanged;
     public event Action OnRoundEnded;
-    public event Action OnRoundReset;
     private readonly SyncVar<int> playerCount = new(0);
     private readonly SyncVar<int> aiPlayerCount = new(0);
     public int PlayerCount => playerCount.value;
@@ -159,7 +127,7 @@ public class MP_PlayerManager : NetworkBehaviour
 
         playerCount.onChanged += HandlePlayerCountChange; 
         aiPlayerCount.onChanged += HandleAIPlayerCountChange;
-        roundResult.onChanged += HandleRoundResultChanged;
+        roundEnded.onChanged += HandleRoundEndedChanged;
 
         if (spawnPointsSource != null)
         {
@@ -174,7 +142,7 @@ public class MP_PlayerManager : NetworkBehaviour
 
         playerCount.onChanged -= HandlePlayerCountChange; 
         aiPlayerCount.onChanged -= HandleAIPlayerCountChange;
-        roundResult.onChanged -= HandleRoundResultChanged;
+        roundEnded.onChanged -= HandleRoundEndedChanged;
 
         if (Instance == this)
             Instance = null; 
@@ -190,7 +158,9 @@ public class MP_PlayerManager : NetworkBehaviour
         }
 
         sessionNetworkManager = networkManager;
-        roundResult.value = default;
+        roundEnded.value = false;
+        if (string.IsNullOrWhiteSpace(resultsSceneName))
+            Debug.LogError("Assign the results scene name on MP_PlayerManager", this);
         sessionNetworkManager.onPlayerJoined += HandlePlayerJoined;
         sessionNetworkManager.onPlayerLeft += HandlePlayerLeft;
 
@@ -223,7 +193,7 @@ public class MP_PlayerManager : NetworkBehaviour
         nextRespawnPoint = 0;
         playerCount.value = 0;
         aiPlayerCount.value = 0;
-        roundResult.value = default;
+        roundEnded.value = false;
     }
 
     private void Update()
@@ -313,43 +283,34 @@ public class MP_PlayerManager : NetworkBehaviour
         if (largestStats != null)
             EndRoundWithWinner(largestStats, largestPlayer);
         else
-            FinishRound(new MP_RoundResult { HasEnded = true });
+            FinishRound(null, "");
     }
 
     private void EndRoundWithWinner(MP_PlayerStats stats, MP_Player winner)
     {
-        FinishRound(new MP_RoundResult(stats.PlayerName, winner.objectId));
+        FinishRound(winner, stats.PlayerName);
     }
 
-    private void FinishRound(MP_RoundResult result)
+    private void FinishRound(MP_Player winner, string winnerName)
     {
         foreach (MP_PlayerStats stats in players)
             if (stats != null && stats.TryGetComponent(out MP_Player cloud) && cloud.IsAlive)
                 RecordStanding(cloud);
 
-        if (result.HasWinner)
-        {
-            foreach (MP_PlayerStats stats in players)
-            {
-                if (stats == null || !stats.TryGetComponent(out MP_Player cloud) ||
-                    cloud.objectId != result.WinnerObjectId)
-                    continue;
-                RecordStanding(cloud, true);
-                break;
-            }
-        }
+        if (winner != null)
+            RecordStanding(winner, true);
 
         roundStandings.Sort((left, right) =>
         {
-            bool leftWon = result.HasWinner && left.ObjectId == result.WinnerObjectId;
-            bool rightWon = result.HasWinner && right.ObjectId == result.WinnerObjectId;
+            bool leftWon = winner != null && left.ObjectId == winner.objectId;
+            bool rightWon = winner != null && right.ObjectId == winner.objectId;
             if (leftWon != rightWon)
                 return leftWon ? -1 : 1;
             int scoreOrder = right.TotalExp.CompareTo(left.TotalExp);
             return scoreOrder != 0 ? scoreOrder : left.ObjectId.CompareTo(right.ObjectId);
         });
 
-        roundResult.value = result;
+        roundEnded.value = true;
         roundResetAt = Time.realtimeSinceStartupAsDouble + RoundResultSeconds;
         foreach (PlayerSession session in sessions.Values)
             session.CanRespawn = false;
@@ -357,7 +318,7 @@ public class MP_PlayerManager : NetworkBehaviour
         MP_CycleTimer.Instance?.StopForRoundEnd();
         CloseJoining();
 
-        if (UsesResultsScene)
+        if (!string.IsNullOrWhiteSpace(resultsSceneName))
         {
             int count = Mathf.Min(3, roundStandings.Count);
             PlayerID[] targets = new PlayerID[sessions.Count];
@@ -370,7 +331,7 @@ public class MP_PlayerManager : NetworkBehaviour
                     podium[i] = roundStandings[i];
                     podium[i].IsLocal = !podium[i].IsAI && podium[i].OwnerId == target;
                 }
-                ReceiveRoundResults(target, resultsSceneName, result.WinnerName ?? "", podium);
+                ReceiveRoundResults(target, resultsSceneName, winnerName, podium);
             }
         }
     }
@@ -414,7 +375,6 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         if (!Application.CanStreamedLevelBeLoaded(sceneName))
         {
-            resultsSceneUnavailable = true;
             Debug.LogError($"Add the results scene '{sceneName}' to the build scenes", this);
             return;
         }
@@ -426,11 +386,11 @@ public class MP_PlayerManager : NetworkBehaviour
         SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
     }
 
-    private void HandleRoundResultChanged(MP_RoundResult result)
+    private void HandleRoundEndedChanged(bool ended)
     {
         bool wasEnded = observedRoundEnded;
-        observedRoundEnded = result.HasEnded;
-        if (result.HasEnded)
+        observedRoundEnded = ended;
+        if (ended)
         {
             serverReadyToStart = false;
             startPending = false;
@@ -445,7 +405,6 @@ public class MP_PlayerManager : NetworkBehaviour
                 MP_LocalPlayerManager.Instance?.ResetForNewRound();
                 MP_SpectatorMode.Instance?.ReturnToWaitingRoom();
             }
-            OnRoundReset?.Invoke();
         }
     }
 
@@ -523,7 +482,7 @@ public class MP_PlayerManager : NetworkBehaviour
 
             MP_CycleTimer.Instance?.ResetRound();
             roundResetAt = 0d;
-            roundResult.value = default;
+            roundEnded.value = false;
             MP_Leaderboard[] leaderboards = FindObjectsByType<MP_Leaderboard>(FindObjectsSortMode.None);
             foreach (MP_Leaderboard leaderboard in leaderboards)
                 leaderboard.ResetRound();
@@ -618,7 +577,6 @@ public class MP_PlayerManager : NetworkBehaviour
 
     private void ResetClientStartState()
     {
-        resultsSceneUnavailable = false;
         nameAccepted = false;
         serverReadyToStart = false;
         startPending = false;
