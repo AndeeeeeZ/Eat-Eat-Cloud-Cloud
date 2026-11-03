@@ -16,6 +16,7 @@ public class MP_CostumePicker : MonoBehaviour
 
     private void Start()
     {
+        playerData?.RestoreSelection();
         RefreshPreview();
     }
 
@@ -93,6 +94,7 @@ public class MP_CostumePicker : MonoBehaviour
     private void SetSelection(MP_CostumeIndices selection)
     {
         playerData.Costume = selection;
+        playerData.RememberSelection();
         RefreshPreview();
     }
 

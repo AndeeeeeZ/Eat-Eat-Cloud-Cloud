@@ -200,6 +200,9 @@ public class MP_StartScreen : MonoBehaviour
             playerManager != null && !string.IsNullOrEmpty(playerManager.NameRejectionReason))
             playerManager.ClearRejectedName();
 
+        enabled = false;
+        startPanel.SetActive(false);
+        nameRejectionPanel.SetActive(false);
         NetworkManager manager = NetworkManager.main;
         if (manager != null && manager.isClient)
             manager.StopClient();

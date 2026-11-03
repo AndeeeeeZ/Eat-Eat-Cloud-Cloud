@@ -837,20 +837,9 @@ MonoBehaviour:
   _ignoreNetworkRules: 0
   spawnPoints:
   - {fileID: 400282084}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 1105681220}
+  - {fileID: 1339469950}
+  - {fileID: 476720442}
 --- !u!4 &171673887
 Transform:
   m_ObjectHideFlags: 0
@@ -1518,8 +1507,8 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   enemyPrefab: {fileID: -6452352967253541942, guid: 93c4afe46e7bea347ad29d8acb25f7b2, type: 3}
-  initialEnemySpawns: 4
-  totalEnemySpawns: 9
+  initialEnemySpawns: 2
+  totalEnemySpawns: 2
   spawnIntervalSeconds: 3
   retryInterval: 1
 --- !u!4 &385144706

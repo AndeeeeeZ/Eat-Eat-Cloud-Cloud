@@ -8,6 +8,7 @@ public class MP_ResultsSceneView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI winnerNameText;
     [SerializeField] private MP_ResultsPodiumSlot[] podiumSlots = new MP_ResultsPodiumSlot[3];
     [SerializeField] private string lobbySceneName = "LobbyScene";
+    private const string MultiplayerSceneName = "MultiplayerScene";
 
     private void Start()
     {
@@ -62,5 +63,17 @@ public class MP_ResultsSceneView : MonoBehaviour
     {
         MP_ResultsSceneData.Clear();
         SceneManager.LoadScene(lobbySceneName, LoadSceneMode.Single);
+    }
+
+    public void JoinNextRound()
+    {
+        if (!Application.CanStreamedLevelBeLoaded(MultiplayerSceneName))
+        {
+            Debug.LogError($"Add '{MultiplayerSceneName}' to the build scenes", this);
+            return;
+        }
+
+        MP_ResultsSceneData.Clear();
+        SceneManager.LoadScene(MultiplayerSceneName, LoadSceneMode.Single);
     }
 }

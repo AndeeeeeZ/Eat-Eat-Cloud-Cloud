@@ -43,7 +43,10 @@ public class MP_PlayerManager : NetworkBehaviour
     internal void ClearRejectedName()
     {
         if (localPlayerData != null)
+        {
             localPlayerData.PlayerName = "";
+            localPlayerData.RememberSelection();
+        }
     }
 
     [Header("Safe Spawning")]
@@ -157,6 +160,7 @@ public class MP_PlayerManager : NetworkBehaviour
         base.OnSpawned(asServer);
         if (!asServer)
         {
+            localPlayerData?.RestoreSelection();
             ResetClientStartState();
             return;
         }
@@ -381,6 +385,7 @@ public class MP_PlayerManager : NetworkBehaviour
         }
 
         MP_ResultsSceneData.Set(winnerName, podium);
+        localPlayerData?.RememberSelection();
         NetworkManager manager = NetworkManager.main;
         if (manager != null && manager.isClient)
             manager.StopClient();
@@ -687,7 +692,10 @@ public class MP_PlayerManager : NetworkBehaviour
         nameAccepted = true;
         nameRejectionReason = "";
         if (localPlayerData != null)
+        {
             localPlayerData.PlayerName = acceptedName;
+            localPlayerData.RememberSelection();
+        }
     }
 
     [ServerRpc(requireOwnership: false)]

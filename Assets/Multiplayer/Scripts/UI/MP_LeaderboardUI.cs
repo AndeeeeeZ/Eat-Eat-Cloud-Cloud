@@ -17,7 +17,7 @@ public class MP_LeaderboardUI : MonoBehaviour
     private TextMeshProUGUI levelColumnText;
     private Vector2 originalTextPosition;
     private Vector2 originalTextSize;
-    private bool originalWordWrapping;
+    private TextWrappingModes originalTextWrappingMode;
 
     private void OnEnable()
     {
@@ -32,13 +32,13 @@ public class MP_LeaderboardUI : MonoBehaviour
         localPlayerRankText.richText = false;
         originalTextPosition = topPlayersText.rectTransform.anchoredPosition;
         originalTextSize = topPlayersText.rectTransform.sizeDelta;
-        originalWordWrapping = topPlayersText.enableWordWrapping;
+        originalTextWrappingMode = topPlayersText.textWrappingMode;
         levelColumnText = Instantiate(topPlayersText, topPlayersText.transform.parent);
         levelColumnText.name = "Leaderboard Level";
         levelColumnText.alignment = TextAlignmentOptions.TopRight;
-        levelColumnText.enableWordWrapping = false;
+        levelColumnText.textWrappingMode = TextWrappingModes.NoWrap;
         levelColumnText.raycastTarget = false;
-        topPlayersText.enableWordWrapping = false;
+        topPlayersText.textWrappingMode = TextWrappingModes.NoWrap;
         leaderboard.OnLeaderboardChanged += Refresh;
 
         localPlayerManager = MP_LocalPlayerManager.Instance;
@@ -58,7 +58,7 @@ public class MP_LeaderboardUI : MonoBehaviour
             Destroy(levelColumnText.gameObject);
             topPlayersText.rectTransform.anchoredPosition = originalTextPosition;
             topPlayersText.rectTransform.sizeDelta = originalTextSize;
-            topPlayersText.enableWordWrapping = originalWordWrapping;
+            topPlayersText.textWrappingMode = originalTextWrappingMode;
         }
         levelColumnText = null;
         if (leaderboard != null)
@@ -94,20 +94,28 @@ public class MP_LeaderboardUI : MonoBehaviour
         text.Clear();
         levelText.Clear();
         int topCount = Mathf.Min(Mathf.Max(1, topPlayersToShow), entries.Count);
+        string[] names = new string[topCount];
         float levelWidth = 40f;
+        float nameWidth = topPlayersText.GetPreferredValues("No players yet").x + 6f;
         for (int i = 0; i < topCount; i++)
+        {
+            names[i] = string.IsNullOrWhiteSpace(entries[i].PlayerName)
+                ? "Unnamed"
+                : entries[i].PlayerName.Replace('\r', ' ').Replace('\n', ' ');
+            nameWidth = Mathf.Max(nameWidth,
+                topPlayersText.GetPreferredValues($"{i + 1}. {names[i]}").x + 6f);
             levelWidth = Mathf.Max(levelWidth,
-                levelColumnText.GetPreferredValues($"Lvl. {entries[i].Level}").x + 6f);
-        levelWidth = Mathf.Min(levelWidth, originalTextSize.x * 0.5f);
-        float nameWidth = originalTextSize.x - levelWidth - 4f;
+                levelColumnText.GetPreferredValues($"Lvl. {entries[i].Level:D2}").x + 6f);
+        }
+        nameWidth = Mathf.Max(nameWidth, originalTextSize.x - levelWidth - 4f);
         RectTransform namesRect = topPlayersText.rectTransform;
         RectTransform levelRect = levelColumnText.rectTransform;
-        namesRect.sizeDelta = new Vector2(nameWidth, originalTextSize.y);
-        namesRect.anchoredPosition = originalTextPosition +
-            Vector2.left * (levelWidth + 4f) * 0.5f;
         levelRect.sizeDelta = new Vector2(levelWidth, originalTextSize.y);
         levelRect.anchoredPosition = originalTextPosition +
             Vector2.right * (originalTextSize.x - levelWidth) * 0.5f;
+        namesRect.sizeDelta = new Vector2(nameWidth, originalTextSize.y);
+        namesRect.anchoredPosition = levelRect.anchoredPosition +
+            Vector2.left * ((levelWidth + nameWidth) * 0.5f + 4f);
         for (int i = 0; i < topCount; i++)
         {
             if (i > 0)
@@ -115,19 +123,8 @@ public class MP_LeaderboardUI : MonoBehaviour
                 text.AppendLine();
                 levelText.AppendLine();
             }
-            string name = string.IsNullOrWhiteSpace(entries[i].PlayerName)
-                ? "Unnamed"
-                : entries[i].PlayerName.Replace('\r', ' ').Replace('\n', ' ');
-            string rank = $"{i + 1}. ";
-            if (topPlayersText.GetPreferredValues(rank + name).x > nameWidth)
-            {
-                while (name.Length > 0 &&
-                       topPlayersText.GetPreferredValues(rank + name + "...").x > nameWidth)
-                    name = name.Substring(0, name.Length - 1);
-                name += "...";
-            }
-            text.Append(rank).Append(name);
-            levelText.Append("Lvl. ").Append(entries[i].Level);
+            text.Append(i + 1).Append(". ").Append(names[i]);
+            levelText.Append("Lvl. ").Append(entries[i].Level.ToString("D2"));
         }
         topPlayersText.text = topCount > 0 ? text.ToString() : "No players yet";
         levelColumnText.text = levelText.ToString();
@@ -147,7 +144,7 @@ public class MP_LeaderboardUI : MonoBehaviour
             if (entries[i].ObjectId != displayedPlayer.objectId)
                 continue;
 
-            localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count}  Lvl. {entries[i].Level}";
+            localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count}  Lvl. {entries[i].Level:D2}";
             break;
         }
     }

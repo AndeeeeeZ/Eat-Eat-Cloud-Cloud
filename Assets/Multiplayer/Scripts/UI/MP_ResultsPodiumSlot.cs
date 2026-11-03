@@ -54,7 +54,12 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
             nameText.text = player.PlayerName ?? "";
         }
         if (localPlayerMarker != null)
-            localPlayerMarker.SetActive(player.IsLocal);
+        {
+            if (transform.IsChildOf(localPlayerMarker.transform))
+                Debug.LogWarning("Assign a separate child object as the podium's local player marker", this);
+            else
+                localPlayerMarker.SetActive(player.IsLocal);
+        }
 
         MP_CostumeIndices look = player.Costume;
         SetSprite(cloudBase, catalog != null ? catalog.cloudBases : null, look.CloudBase);

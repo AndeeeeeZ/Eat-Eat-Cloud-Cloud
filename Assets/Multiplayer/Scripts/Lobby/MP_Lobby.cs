@@ -14,7 +14,11 @@ public class MP_Lobby : MonoBehaviour
 
     private void Start()
     {
-        if (playerData != null && nameInputHandler != null)
+        if (playerData == null)
+            return;
+
+        playerData.RestoreSelection();
+        if (nameInputHandler != null)
             nameInputHandler.SetName(playerData.PlayerName);
     }
 
@@ -32,6 +36,7 @@ public class MP_Lobby : MonoBehaviour
 
         Debug.Log("Player name: " + name);
         playerData.PlayerName = name;
+        playerData.RememberSelection();
 
         OnGameStart?.Invoke();
     }
