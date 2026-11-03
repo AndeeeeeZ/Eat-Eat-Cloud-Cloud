@@ -876,7 +876,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
             if (initialRegions.Count > 0 || pendingRespawns.Count > 0)
             {
-                if (!warnedNoSpawnPosition)
+                if (initialRegions.Count > 0 && !warnedNoSpawnPosition)
                 {
                     Debug.LogWarning("No collision-free food position outside occupied player grid cells was found within the search budget", this);
                     warnedNoSpawnPosition = true;
@@ -1078,10 +1078,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         int sourceCell = GetCellIndex(source, indexedBoundaryCenter, indexedBoundarySize);
         int sourceRegion = cellRegionIndices[sourceCell];
 
-        return TrySpawnInOtherRegion(boundary, sourceRegion,
-                   ref regionChecksRemaining) ||
-            (regionChecksRemaining > 0 && TrySpawnInRegion(boundary, sourceRegion,
-                ref regionChecksRemaining));
+        return TrySpawnInOtherRegion(boundary, sourceRegion, ref regionChecksRemaining);
     }
 
     private bool TrySpawnInOtherRegion(MP_GameBoundary boundary, int sourceRegion,
