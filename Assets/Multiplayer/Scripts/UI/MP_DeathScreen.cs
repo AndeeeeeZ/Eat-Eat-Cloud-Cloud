@@ -30,7 +30,10 @@ public class MP_DeathScreen : MonoBehaviour
         localPlayerManager = MP_LocalPlayerManager.Instance;
         roundManager = MP_PlayerManager.Instance;
         if (roundManager != null)
+        {
             roundManager.OnRoundEnded += HideDeathScreen;
+            roundManager.OnRoundRestarted += HideDeathScreen;
+        }
         if (localPlayerManager == null)
         {
             deathPanel.SetActive(false);
@@ -55,7 +58,10 @@ public class MP_DeathScreen : MonoBehaviour
         if (respawnButton != null)
             respawnButton.onClick.RemoveListener(RequestRespawn);
         if (roundManager != null)
+        {
             roundManager.OnRoundEnded -= HideDeathScreen;
+            roundManager.OnRoundRestarted -= HideDeathScreen;
+        }
         if (localPlayerManager != null)
         {
             localPlayerManager.OnLocalPlayerReady -= HandleLocalPlayerReady;
@@ -136,12 +142,15 @@ public class MP_DeathScreen : MonoBehaviour
         {
             roundManager = MP_PlayerManager.Instance;
             roundManager.OnRoundEnded += HideDeathScreen;
+            roundManager.OnRoundRestarted += HideDeathScreen;
         }
 
         bool spectating = MP_SpectatorMode.Instance != null && MP_SpectatorMode.Instance.IsSpectating;
         if (spectating && deathPanel.activeSelf)
             deathPanel.SetActive(false);
         else if (roundManager != null && roundManager.RoundEnded && deathPanel.activeSelf)
+            HideDeathScreen();
+        else if (localPlayerManager != null && !localPlayerManager.HasDied && deathPanel.activeSelf)
             HideDeathScreen();
         else if (!spectating && localPlayerManager != null && localPlayerManager.HasDied &&
             (roundManager == null || !roundManager.RoundEnded) && !deathPanel.activeSelf)

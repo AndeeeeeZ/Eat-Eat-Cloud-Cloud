@@ -60,6 +60,7 @@ public class MP_PlayerManager : NetworkBehaviour
     private readonly List<MP_RoundStanding> roundStandings = new();
     public IReadOnlyList<MP_PlayerStats> Players => players;
     private readonly SyncVar<bool> roundEnded = new(false);
+    private readonly SyncVar<int> emptyRoundRestartCount = new(0);
     public bool RoundEnded => isSpawned && roundEnded.value;
     public bool CanStart => localPlayerData != null && IsClientPrepared() &&
         nameAccepted && serverReadyToStart && !startPending &&
@@ -116,6 +117,7 @@ public class MP_PlayerManager : NetworkBehaviour
     public event Action<int> OnPlayerCountChanged;
     public event Action<int> OnAIPlayerCountChanged;
     public event Action OnRoundEnded;
+    public event Action OnRoundRestarted;
     private readonly SyncVar<int> playerCount = new(0);
     private readonly SyncVar<int> aiPlayerCount = new(0);
     public int PlayerCount => playerCount.value;
@@ -135,6 +137,7 @@ public class MP_PlayerManager : NetworkBehaviour
         playerCount.onChanged += HandlePlayerCountChange; 
         aiPlayerCount.onChanged += HandleAIPlayerCountChange;
         roundEnded.onChanged += HandleRoundEndedChanged;
+        emptyRoundRestartCount.onChanged += HandleEmptyRoundRestarted;
 
         if (spawnPointsSource != null)
         {
@@ -150,6 +153,7 @@ public class MP_PlayerManager : NetworkBehaviour
         playerCount.onChanged -= HandlePlayerCountChange; 
         aiPlayerCount.onChanged -= HandleAIPlayerCountChange;
         roundEnded.onChanged -= HandleRoundEndedChanged;
+        emptyRoundRestartCount.onChanged -= HandleEmptyRoundRestarted;
 
         if (Instance == this)
             Instance = null; 
@@ -229,8 +233,31 @@ public class MP_PlayerManager : NetworkBehaviour
         if (timer == null || timer.CurrentCycle <= 1)
             return;
 
+        if (TryRestartEmptyRound())
+            return;
+
         CloseJoining();
         TryEndRound();
+    }
+
+    private bool TryRestartEmptyRound()
+    {
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        if (!isServer || resettingRound || RoundEnded || sessions.Count == 0 ||
+            timer == null || timer.CurrentCycle <= 1 || players.Count != 0)
+            return false;
+
+        for (int i = pendingClouds.Count - 1; i >= 0; i--)
+        {
+            if (pendingClouds[i] == null)
+                pendingClouds.RemoveAt(i);
+            else
+                return false;
+        }
+
+        ResetRound();
+        emptyRoundRestartCount.value++;
+        return true;
     }
 
     public void CloseJoining()
@@ -403,15 +430,27 @@ public class MP_PlayerManager : NetworkBehaviour
             OnRoundEnded?.Invoke();
         }
         else if (wasEnded)
-        {
-            if (isClient)
-            {
-                startFailure = "";
-                nextStartReadinessCheck = 0f;
-                MP_LocalPlayerManager.Instance?.ResetForNewRound();
-                MP_SpectatorMode.Instance?.ReturnToWaitingRoom();
-            }
-        }
+            ResetClientForNewRound();
+    }
+
+    private void HandleEmptyRoundRestarted(int restartCount)
+    {
+        if (restartCount > 0)
+            ResetClientForNewRound();
+    }
+
+    private void ResetClientForNewRound()
+    {
+        if (!isClient)
+            return;
+
+        serverReadyToStart = false;
+        startPending = false;
+        startFailure = "";
+        nextStartReadinessCheck = 0f;
+        MP_LocalPlayerManager.Instance?.ResetForNewRound();
+        MP_SpectatorMode.Instance?.ReturnToWaitingRoom();
+        OnRoundRestarted?.Invoke();
     }
 
     private void HandlePlayerJoined(PlayerID player, bool isReconnect, bool asServer)
@@ -706,12 +745,15 @@ public class MP_PlayerManager : NetworkBehaviour
 
         bool ready = CanStartOnServer(session, out string reason);
         session.ReadyToStart = ready;
-        ReceiveStartReadiness(info.sender, ready, reason);
+        ReceiveStartReadiness(info.sender, ready, reason, emptyRoundRestartCount.value);
     }
 
     [TargetRpc]
-    private void ReceiveStartReadiness(PlayerID target, bool ready, string reason)
+    private void ReceiveStartReadiness(PlayerID target, bool ready, string reason, int restartCount)
     {
+        if (restartCount != emptyRoundRestartCount.value)
+            return;
+
         serverReadyToStart = ready;
         startFailure = ready ? "" : reason;
     }
@@ -828,13 +870,16 @@ public class MP_PlayerManager : NetworkBehaviour
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         session.CanRespawn = !RoundEnded && timer != null && timer.CurrentCycle == 1;
-        ReceivePlayerDeath(player, killerName);
+        ReceivePlayerDeath(player, killerName, emptyRoundRestartCount.value);
     }
 
     // Sent from the persistent manager so the message survives the cloud's despawn
     [TargetRpc]
-    private void ReceivePlayerDeath(PlayerID target, string killerName)
+    private void ReceivePlayerDeath(PlayerID target, string killerName, int restartCount)
     {
+        if (restartCount != emptyRoundRestartCount.value)
+            return;
+
         if (MP_LocalPlayerManager.Instance != null)
             MP_LocalPlayerManager.Instance.HandleLocalPlayerDeath(killerName);
     }
