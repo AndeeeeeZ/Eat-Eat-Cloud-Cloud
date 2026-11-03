@@ -20,6 +20,7 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
 
     private Vector2 restingPosition;
     private float jumpProgress;
+    private PlayerCostume activeCatalog;
 
     private void OnEnable()
     {
@@ -32,6 +33,13 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (activeCatalog != null && ring != null && ring.enabled && ring.sprite != null)
+        {
+            ring.rectTransform.Rotate(0f, 0f, activeCatalog.RingSpinSpeed * Time.unscaledDeltaTime);
+            ring.color = CostumeRingAnimation.WithBreathingAlpha(
+                ring.color, Time.unscaledTime, activeCatalog);
+        }
+
         if (jumpTarget == null)
             return;
 
@@ -47,8 +55,14 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
             jumpTarget.anchoredPosition = restingPosition;
     }
 
+    public void SetCatalog(PlayerCostume catalog)
+    {
+        activeCatalog = catalog;
+    }
+
     public void Apply(MP_RoundStanding player, PlayerCostume catalog)
     {
+        SetCatalog(catalog);
         if (nameText != null)
         {
             nameText.richText = false;
@@ -71,8 +85,10 @@ public class MP_ResultsPodiumSlot : MonoBehaviour
         {
             ring.sprite = catalog != null ? catalog.ringSprite : null;
             ring.enabled = ring.sprite != null;
-            ring.color = catalog != null
-                ? PlayerCostume.GetColor(catalog.ringColors, look.RingColor) : Color.white;
+            ring.color = CostumeRingAnimation.WithBreathingAlpha(
+                catalog != null
+                    ? PlayerCostume.GetColor(catalog.ringColors, look.RingColor) : Color.white,
+                Time.unscaledTime, catalog);
         }
         SetSprite(bottom, catalog != null ? catalog.bottoms : null, look.Bottom);
         SetSprite(rightSide, catalog != null ? catalog.rightSides : null, look.Right);

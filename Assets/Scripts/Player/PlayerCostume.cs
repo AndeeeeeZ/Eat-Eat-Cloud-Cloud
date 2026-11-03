@@ -10,6 +10,17 @@ public class PlayerCostume : ScriptableObject
     public Color[] baseColors, ringColors;
     public Sprite ringSprite;
 
+    [Header("Ring Animation")]
+    [SerializeField] private FloatValue ringSpinSpeed;
+    [SerializeField] private FloatValue ringBreathingSpeed;
+    [SerializeField] private FloatValue ringAlphaMinimum;
+    [SerializeField] private FloatValue ringAlphaMaximum;
+
+    public float RingSpinSpeed => ringSpinSpeed != null ? ringSpinSpeed.Value : 15f;
+    public float RingBreathingSpeed => ringBreathingSpeed != null ? ringBreathingSpeed.Value : 0.5f;
+    public float RingAlphaMinimum => ringAlphaMinimum != null ? ringAlphaMinimum.Value : 0.25f;
+    public float RingAlphaMaximum => ringAlphaMaximum != null ? ringAlphaMaximum.Value : 1f;
+
     [SerializeField] private VoidEvent OnCostumeChanged;
 
     public Sprite GetCloudBase() => GetFrom(cloudBases, cloudBaseIndex);

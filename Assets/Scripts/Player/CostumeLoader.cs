@@ -11,6 +11,16 @@ public class CostumeLoader : MonoBehaviour
         UpdateCostume();
     }
 
+    private void Update()
+    {
+        if (costume == null || ring == null || ring.sprite == null)
+            return;
+
+        ring.transform.Rotate(0f, 0f, costume.RingSpinSpeed * Time.deltaTime);
+        ring.color = CostumeRingAnimation.WithBreathingAlpha(
+            ring.color, Time.time, costume);
+    }
+
     public void UpdateCostume()
     {
         cloudBase.sprite = costume.GetCloudBase();
@@ -18,7 +28,8 @@ public class CostumeLoader : MonoBehaviour
         if (ring != null)
         {
             ring.sprite = costume.ringSprite;
-            ring.color = costume.GetRingColor();
+            ring.color = CostumeRingAnimation.WithBreathingAlpha(
+                costume.GetRingColor(), Time.time, costume);
         }
         bottom.sprite = costume.GetBottom();
         rightSide.sprite = costume.GetRight();

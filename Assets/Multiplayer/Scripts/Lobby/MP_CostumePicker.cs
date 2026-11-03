@@ -22,6 +22,16 @@ public class MP_CostumePicker : MonoBehaviour
         RefreshPreview();
     }
 
+    private void Update()
+    {
+        if (catalog == null || ring == null || !ring.enabled || ring.sprite == null)
+            return;
+
+        ring.rectTransform.Rotate(0f, 0f, catalog.RingSpinSpeed * Time.unscaledDeltaTime);
+        ring.color = CostumeRingAnimation.WithBreathingAlpha(
+            ring.color, Time.unscaledTime, catalog);
+    }
+
     public void CycleCloudBase(int diff)
     {
         if (playerData == null || catalog == null)
@@ -164,7 +174,9 @@ public class MP_CostumePicker : MonoBehaviour
             cloudBase.color = PlayerCostume.GetColor(catalog.baseColors, selection.BaseColor);
         SetPreviewImage(ring, catalog.ringSprite);
         if (ring != null)
-            ring.color = PlayerCostume.GetColor(catalog.ringColors, selection.RingColor);
+            ring.color = CostumeRingAnimation.WithBreathingAlpha(
+                PlayerCostume.GetColor(catalog.ringColors, selection.RingColor),
+                Time.unscaledTime, catalog);
         SetPreviewImage(bottom, GetSprite(catalog.bottoms, selection.Bottom));
         SetPreviewImage(rightSide, GetSprite(catalog.rightSides, selection.Right));
         SetPreviewImage(leftSide, GetSprite(catalog.leftSides, selection.Left));

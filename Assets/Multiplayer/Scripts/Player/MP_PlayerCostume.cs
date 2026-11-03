@@ -84,6 +84,16 @@ public class MP_PlayerCostume : NetworkBehaviour
             ApplyCostume(indices.value);
     }
 
+    private void Update()
+    {
+        if (!isClient || catalog == null || ring == null || ring.sprite == null)
+            return;
+
+        ring.transform.Rotate(0f, 0f, catalog.RingSpinSpeed * Time.deltaTime);
+        ring.color = CostumeRingAnimation.WithBreathingAlpha(
+            ring.color, Time.time, catalog);
+    }
+
     private void ApplyCostume(MP_CostumeIndices selection)
     {
         if (!isClient || !IsValid(selection))
@@ -97,7 +107,9 @@ public class MP_PlayerCostume : NetworkBehaviour
         if (ring != null)
         {
             ring.sprite = catalog.ringSprite;
-            ring.color = PlayerCostume.GetColor(catalog.ringColors, selection.RingColor);
+            ring.color = CostumeRingAnimation.WithBreathingAlpha(
+                PlayerCostume.GetColor(catalog.ringColors, selection.RingColor),
+                Time.time, catalog);
         }
         if (bottom != null)
             bottom.sprite = catalog.bottoms[selection.Bottom];

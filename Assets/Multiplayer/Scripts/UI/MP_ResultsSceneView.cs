@@ -12,6 +12,15 @@ public class MP_ResultsSceneView : MonoBehaviour
 
     private void Start()
     {
+        if (podiumSlots != null)
+        {
+            foreach (MP_ResultsPodiumSlot slot in podiumSlots)
+            {
+                if (slot != null)
+                    slot.SetCatalog(costumeCatalog);
+            }
+        }
+
         if (!MP_ResultsSceneData.HasResults)
         {
             Debug.LogWarning("No round results were received before loading this scene", this);
