@@ -69,10 +69,9 @@ public class MP_Player : PlayerIdentity<MP_Player>
         float experienceToAward = playerStats.TotalExp;
         IsAlive = false;
 
+        eaterGrowth.GainExperienceFromEating(experienceToAward);
         // Remove the living cloud immediately; keep its connection record for respawn
         manager.UnregisterPlayer(this);
-
-        eaterGrowth.GainExperienceFromEating(experienceToAward);
         Debug.Log($"{eater.Stats.PlayerName} ate {playerStats.PlayerName}", this);
 
         if (owner.HasValue)

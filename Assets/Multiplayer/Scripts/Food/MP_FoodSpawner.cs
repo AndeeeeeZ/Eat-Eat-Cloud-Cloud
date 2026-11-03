@@ -384,12 +384,14 @@ public class MP_FoodSpawner : NetworkBehaviour
         if (!isServer || !isSpawned)
             return;
 
+        foreach (KeyValuePair<PlayerID, HashSet<int>> entry in nearbyChunksByPlayer)
+            foreach (int chunkIndex in entry.Value)
+                ReceiveFoodChunkClear(entry.Key, chunkIndex);
+
         foodRecords.Clear();
         reindexFoodIds.Clear();
         nearbyChunksByPlayer.Clear();
-        clientAspectRatios.Clear();
         spectatorTargets.Clear();
-        readyPlayers.Clear();
         visibilityCandidates.Clear();
         dirtyChunks.Clear();
         snapshotCache.Clear();

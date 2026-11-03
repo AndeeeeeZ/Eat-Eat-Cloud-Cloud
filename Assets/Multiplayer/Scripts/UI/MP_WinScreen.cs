@@ -23,7 +23,10 @@ public class MP_WinScreen : MonoBehaviour
 
         roundManager = MP_PlayerManager.Instance;
         if (roundManager != null)
+        {
             roundManager.OnRoundEnded += ShowResult;
+            roundManager.OnRoundReset += HideResult;
+        }
 
         localPlayerManager = MP_LocalPlayerManager.Instance;
         if (localPlayerManager != null)
@@ -38,7 +41,10 @@ public class MP_WinScreen : MonoBehaviour
     private void OnDisable()
     {
         if (roundManager != null)
+        {
             roundManager.OnRoundEnded -= ShowResult;
+            roundManager.OnRoundReset -= HideResult;
+        }
         if (localPlayerManager != null)
             localPlayerManager.OnLocalPlayerReady -= HandleLocalPlayerReady;
         if (configured && winPanel != null)
@@ -54,6 +60,7 @@ public class MP_WinScreen : MonoBehaviour
         {
             roundManager = MP_PlayerManager.Instance;
             roundManager.OnRoundEnded += ShowResult;
+            roundManager.OnRoundReset += HideResult;
         }
 
         if (localPlayerManager == null && MP_LocalPlayerManager.Instance != null)
@@ -64,8 +71,16 @@ public class MP_WinScreen : MonoBehaviour
                 ShowResult();
         }
 
+        if (roundManager != null && roundManager.UsesResultsScene)
+        {
+            HideResult();
+            return;
+        }
+
         if (roundManager != null && roundManager.RoundEnded && !winPanel.activeSelf)
             ShowResult();
+        else if (roundManager != null && !roundManager.RoundEnded && winPanel.activeSelf)
+            HideResult();
     }
 
     private void HandleLocalPlayerReady(MP_Player player)
@@ -76,7 +91,8 @@ public class MP_WinScreen : MonoBehaviour
 
     private void ShowResult()
     {
-        if (!configured || roundManager == null || !roundManager.RoundEnded)
+        if (!configured || roundManager == null || !roundManager.RoundEnded ||
+            roundManager.UsesResultsScene)
             return;
 
         string winnerName = roundManager.WinnerName;
@@ -87,5 +103,11 @@ public class MP_WinScreen : MonoBehaviour
                 ? "You won!"
                 : $"{(string.IsNullOrWhiteSpace(winnerName) ? "A cloud" : winnerName)} won!";
         winPanel.SetActive(true);
+    }
+
+    private void HideResult()
+    {
+        if (configured && winPanel != null)
+            winPanel.SetActive(false);
     }
 }

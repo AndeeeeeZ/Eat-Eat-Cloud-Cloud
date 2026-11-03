@@ -64,6 +64,12 @@ public class MP_LocalPlayerManager : MonoBehaviour
         OnLocalPlayerDied?.Invoke(killerName);
     }
 
+    public void ResetForNewRound()
+    {
+        HasDied = false;
+        KillerName = "";
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)

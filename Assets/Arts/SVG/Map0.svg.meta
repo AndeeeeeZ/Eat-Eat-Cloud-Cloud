@@ -23,10 +23,10 @@ ScriptedImporter:
   resolutionMultiplier: 1
   stepDistance: 10
   samplingStepDistance: 100
-  maxCordDeviationEnabled: 0
-  maxCordDeviation: 1
-  maxTangentAngleEnabled: 0
-  maxTangentAngle: 5
+  maxCordDeviationEnabled: 1
+  maxCordDeviation: 0.5
+  maxTangentAngleEnabled: 1
+  maxTangentAngle: 2
   keepTextureAspectRatio: 1
   textureSize: 256
   textureWidth: 256

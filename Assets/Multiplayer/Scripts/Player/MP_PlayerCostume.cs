@@ -8,6 +8,7 @@ public class MP_PlayerCostume : NetworkBehaviour
     [SerializeField] private SpriteRenderer cloudBase, bottom, rightSide, leftSide, face;
 
     private readonly SyncVar<MP_CostumeIndices> indices = new(default);
+    public MP_CostumeIndices CurrentIndices => indices.value;
 
     public bool IsValid(MP_CostumeIndices selection)
     {
