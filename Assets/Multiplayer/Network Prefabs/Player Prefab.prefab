@@ -270,7 +270,6 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   playerStats: {fileID: -8135837681379488093}
-  playerData: {fileID: 11400000, guid: 5bdfe2565895d864690004fa90bb69d1, type: 2}
   spawnProtectionDuration: 4
   spawnProtectionRing: {fileID: 820610110000000001}
 --- !u!114 &-8135837681379488093
@@ -607,7 +606,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0.69}
-  m_SizeDelta: {x: 3.48, y: 0.91}
+  m_SizeDelta: {x: 4.38, y: 0.91}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!223 &8962353986704233308
 Canvas:
@@ -966,7 +965,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 18.38, y: 3.54}
+  m_SizeDelta: {x: 21.02, y: 3.54}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6153032512653263097
 CanvasRenderer:
