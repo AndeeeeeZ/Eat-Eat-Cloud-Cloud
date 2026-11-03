@@ -17,17 +17,33 @@ public class MP_ResultsSceneView : MonoBehaviour
             return;
         }
 
+        var topPlayers = MP_ResultsSceneData.TopPlayers;
         if (winnerNameText != null)
         {
             winnerNameText.richText = false;
-            winnerNameText.text = string.IsNullOrWhiteSpace(MP_ResultsSceneData.WinnerName)
-                ? "No winner" : MP_ResultsSceneData.WinnerName;
+            int localPlace = 0;
+            for (int i = 0; i < topPlayers.Count && i < 3; i++)
+            {
+                if (!topPlayers[i].IsLocal)
+                    continue;
+                localPlace = i + 1;
+                break;
+            }
+
+            winnerNameText.text = localPlace switch
+            {
+                1 => "You are the 1st place",
+                2 => "You are the 2nd place",
+                3 => "You are the 3rd place",
+                _ => string.IsNullOrWhiteSpace(MP_ResultsSceneData.WinnerName)
+                    ? "No winner"
+                    : $"{MP_ResultsSceneData.WinnerName} is the winner"
+            };
         }
 
         if (podiumSlots == null)
             return;
 
-        var topPlayers = MP_ResultsSceneData.TopPlayers;
         for (int i = 0; i < podiumSlots.Length; i++)
         {
             MP_ResultsPodiumSlot slot = podiumSlots[i];
