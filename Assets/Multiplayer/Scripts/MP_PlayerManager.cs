@@ -40,6 +40,12 @@ public class MP_PlayerManager : NetworkBehaviour
     private string nameRejectionReason = "";
     public string NameRejectionReason => nameRejectionReason;
 
+    internal void ClearRejectedName()
+    {
+        if (localPlayerData != null)
+            localPlayerData.PlayerName = "";
+    }
+
     [Header("Safe Spawning")]
     [SerializeField, Min(0f)] private float spawnClearance = 0.5f;
     [SerializeField, Min(1)] private int spawnSearchAttempts = 64;

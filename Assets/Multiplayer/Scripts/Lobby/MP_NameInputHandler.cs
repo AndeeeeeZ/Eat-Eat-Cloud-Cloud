@@ -37,6 +37,12 @@ public class MP_NameInputHandler : MonoBehaviour
         return nameInputField.text.Trim();
     }
 
+    public void SetName(string name)
+    {
+        if (nameInputField != null)
+            nameInputField.SetTextWithoutNotify(name ?? "");
+    }
+
     private void ShowNameError()
     {
         if (shakeCoroutine != null)

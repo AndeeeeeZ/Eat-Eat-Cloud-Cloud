@@ -12,10 +12,10 @@ public class MP_Lobby : MonoBehaviour
 
     public UnityEvent OnGameStart;
 
-    private void Awake()
+    private void Start()
     {
-        playerData.PlayerName = "";
-        playerData.Costume = default;
+        if (playerData != null && nameInputHandler != null)
+            nameInputHandler.SetName(playerData.PlayerName);
     }
 
     public void Play()

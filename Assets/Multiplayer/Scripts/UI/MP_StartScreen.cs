@@ -195,6 +195,11 @@ public class MP_StartScreen : MonoBehaviour
 
     public void ReturnToLobby()
     {
+        MP_PlayerManager playerManager = MP_PlayerManager.Instance;
+        if (nameRejectionPanel != null && nameRejectionPanel.activeInHierarchy &&
+            playerManager != null && !string.IsNullOrEmpty(playerManager.NameRejectionReason))
+            playerManager.ClearRejectedName();
+
         NetworkManager manager = NetworkManager.main;
         if (manager != null && manager.isClient)
             manager.StopClient();
