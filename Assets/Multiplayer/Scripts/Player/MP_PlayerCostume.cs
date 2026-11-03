@@ -9,6 +9,7 @@ public class MP_PlayerCostume : NetworkBehaviour
 
     private readonly SyncVar<MP_CostumeIndices> indices = new(default);
     public MP_CostumeIndices CurrentIndices => indices.value;
+    public Sprite CloudBaseSprite => cloudBase != null ? cloudBase.sprite : null;
 
     public bool IsValid(MP_CostumeIndices selection)
     {
