@@ -10,6 +10,14 @@ public class MP_PlayerData : ScriptableObject
     private static string savedName;
     private static MP_CostumeIndices savedCostume;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetSavedSelection()
+    {
+        hasSavedSelection = false;
+        savedName = null;
+        savedCostume = default;
+    }
+
     public void RememberSelection()
     {
         savedName = PlayerName;
@@ -20,7 +28,11 @@ public class MP_PlayerData : ScriptableObject
     public void RestoreSelection()
     {
         if (!hasSavedSelection)
+        {
+            PlayerName = string.Empty;
+            Costume = default;
             return;
+        }
 
         PlayerName = savedName;
         Costume = savedCostume;
