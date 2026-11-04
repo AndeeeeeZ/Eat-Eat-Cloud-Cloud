@@ -9,6 +9,8 @@ public class MP_MiniMap : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Image eventZoneTemplate;
     [SerializeField, Min(0f)] private float minimumEventZoneDiameter = 10f;
 
+    private const float EventZoneBlinkPeriodSeconds = 0.5f;
+
     private readonly List<UnityEngine.UI.Image> eventZoneIndicators = new();
     private MP_Player displayedPlayer;
     private MP_PlayerMovement displayedMovement;
@@ -136,8 +138,11 @@ public class MP_MiniMap : MonoBehaviour
             color.a *= eventZoneTemplate.color.a;
             if (indicator.color != color)
                 indicator.color = color;
-            if (!indicator.enabled)
-                indicator.enabled = true;
+            bool visible = !zone.IsBlinking ||
+                Mathf.Repeat(Time.unscaledTime, EventZoneBlinkPeriodSeconds) <
+                EventZoneBlinkPeriodSeconds * 0.5f;
+            if (indicator.enabled != visible)
+                indicator.enabled = visible;
             if (!indicator.gameObject.activeSelf)
                 indicator.gameObject.SetActive(true);
         }

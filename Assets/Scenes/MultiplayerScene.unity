@@ -2516,8 +2516,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   messageGroup: {fileID: 732049403}
   messageText: {fileID: 991121905}
-  fadeInDuration: 0.3
-  fadeOutDuration: 0.3
+  fadeInDuration: 0.75
+  fadeOutDuration: 0.75
 --- !u!225 &732049403
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -6131,7 +6131,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.6640022, b: 0, a: 0.4392157}
+  m_Color: {r: 1, g: 0.7532815, b: 0, a: 0.21960784}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -7057,10 +7057,11 @@ MonoBehaviour:
   - {fileID: 1451868632}
   - {fileID: 1280933161}
   - {fileID: 1059045383}
-  eventZoneRadius: 5
-  eventFoodCount: 15
-  eventDurationSeconds: 30
-  eventExperienceMultiplier: 4
+  eventZoneRadius: 30
+  eventFoodCount: 40
+  eventDurationSeconds: 45
+  eventZoneBlinkWarningSeconds: 5
+  eventExperienceMultiplier: 2
   eventFoodColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   eventMessageView: {fileID: 732049402}
   eventMessage: Bonus food has appeared!
