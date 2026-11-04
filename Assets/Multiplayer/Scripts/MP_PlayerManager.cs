@@ -64,7 +64,7 @@ public class MP_PlayerManager : NetworkBehaviour
     public bool RoundEnded => isSpawned && roundEnded.value;
     public bool CanStart => localPlayerData != null && IsClientPrepared() &&
         nameAccepted && serverReadyToStart && !startPending &&
-        !RoundEnded && MP_CycleTimer.Instance.CurrentCycle <= 1 &&
+        !RoundEnded && MP_CycleTimer.Instance.IsJoiningOpen &&
         MP_LocalPlayerManager.Instance.LocalPlayer == null &&
         !MP_LocalPlayerManager.Instance.HasDied;
     public bool CanSpectate => nameAccepted && IsClientPrepared() &&
@@ -76,8 +76,9 @@ public class MP_PlayerManager : NetworkBehaviour
             MP_LocalPlayerManager local = MP_LocalPlayerManager.Instance;
             if (RoundEnded)
                 return "Round ended.";
-            if (MP_CycleTimer.Instance != null && MP_CycleTimer.Instance.CurrentCycle > 1)
-                return "Joining is closed. Spectating this round.";
+            MP_CycleTimer timer = MP_CycleTimer.Instance;
+            if (timer != null && !timer.IsJoiningOpen)
+                return "Joining is closed. \nSpectating this round.";
             if (startPending)
                 return "Starting...";
             if (!string.IsNullOrEmpty(startFailure))
@@ -92,7 +93,10 @@ public class MP_PlayerManager : NetworkBehaviour
                 return "Waiting for server...";
             if (local != null && local.LocalPlayer != null)
                 return "Playing";
-            return "Ready to start";
+            if (timer != null && timer.JoiningOpenForWholeRound)
+                return "Ready to play\nJoining stays open for the whole round.";
+            int seconds = timer != null ? timer.SecondsUntilJoiningCloses : 0;
+            return $"Ready to play\n{seconds / 60:00}:{seconds % 60:00} until joining closes.";
         }
     }
 
@@ -233,10 +237,13 @@ public class MP_PlayerManager : NetworkBehaviour
         if (timer == null || timer.CurrentCycle <= 1)
             return;
 
-        if (TryRestartEmptyRound())
-            return;
+        if (!timer.IsJoiningOpen)
+        {
+            if (TryRestartEmptyRound())
+                return;
 
-        CloseJoining();
+            CloseJoining();
+        }
         TryEndRound();
     }
 
@@ -244,7 +251,7 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         if (!isServer || resettingRound || RoundEnded || sessions.Count == 0 ||
-            timer == null || timer.CurrentCycle <= 1 || players.Count != 0)
+            timer == null || timer.IsJoiningOpen || players.Count != 0)
             return false;
 
         for (int i = pendingClouds.Count - 1; i >= 0; i--)
@@ -666,7 +673,7 @@ public class MP_PlayerManager : NetworkBehaviour
         }
 
         if (serverReadyToStart || !IsClientPrepared() || RoundEnded ||
-            MP_CycleTimer.Instance.CurrentCycle > 1 ||
+            !MP_CycleTimer.Instance.IsJoiningOpen ||
             Time.unscaledTime < nextStartReadinessCheck)
             return;
 
@@ -833,7 +840,7 @@ public class MP_PlayerManager : NetworkBehaviour
             MP_FoodSpawner.Instance == null || !MP_FoodSpawner.Instance.IsReadyForPlayers ||
             MP_GameBoundary.Instance == null)
             reason = "Waiting for server...";
-        else if (MP_CycleTimer.Instance.CurrentCycle > 1)
+        else if (!MP_CycleTimer.Instance.IsJoiningOpen)
             reason = "Joining is closed. Spectating this round.";
         else if (playerPrefab == null || playerPrefab.Stats == null ||
             playerPrefab.GetComponent<MP_PlayerGrowth>() == null)
@@ -869,7 +876,7 @@ public class MP_PlayerManager : NetworkBehaviour
             return;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
-        session.CanRespawn = !RoundEnded && timer != null && timer.CurrentCycle == 1;
+        session.CanRespawn = !RoundEnded && timer != null && timer.IsJoiningOpen;
         ReceivePlayerDeath(player, killerName, emptyRoundRestartCount.value);
     }
 
@@ -887,7 +894,7 @@ public class MP_PlayerManager : NetworkBehaviour
     public bool TryRequestRespawn()
     {
         if (!isSpawned || !isClient || RoundEnded ||
-            MP_CycleTimer.Instance == null || MP_CycleTimer.Instance.CurrentCycle != 1 ||
+            MP_CycleTimer.Instance == null || !MP_CycleTimer.Instance.IsJoiningOpen ||
             MP_LocalPlayerManager.Instance == null ||
             !MP_LocalPlayerManager.Instance.HasDied)
             return false;
@@ -907,7 +914,7 @@ public class MP_PlayerManager : NetworkBehaviour
 
         // Cloud may already exist while its spawn callbacks are still pending
         if (RoundEnded || !session.CanRespawn || session.Cloud != null ||
-            MP_CycleTimer.Instance == null || MP_CycleTimer.Instance.CurrentCycle != 1)
+            MP_CycleTimer.Instance == null || !MP_CycleTimer.Instance.IsJoiningOpen)
             return;
 
         if (playerPrefab == null || playerPrefab.Stats == null ||

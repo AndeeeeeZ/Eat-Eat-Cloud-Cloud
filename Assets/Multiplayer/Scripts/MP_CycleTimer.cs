@@ -7,6 +7,8 @@ public class MP_CycleTimer : NetworkBehaviour
     [SerializeField, Min(1f)] private float firstCycleDurationSeconds = 60f;
     [SerializeField, Min(1f)] private float cycleDurationSeconds = 60f;
     [SerializeField, Min(1)] private int finalCycle = 5;
+    [Tooltip("Players may join and respawn through this cycle. Values above Final Cycle keep joining open for the whole round")]
+    [SerializeField, Min(1)] private int cyclesOpenForJoining = 3;
     [SerializeField, Min(1f)] private float finalCycleDurationSeconds = 180f;
     [SerializeField, Min(1f)] private float speedMultiplierPerCycle = 1.1f;
     [Tooltip("One movement base level per cycle, starting with cycle 1. Later cycles reuse the last entry")]
@@ -18,6 +20,8 @@ public class MP_CycleTimer : NetworkBehaviour
 
     private readonly SyncVar<int> currentCycle = new(0);
     private readonly SyncVar<int> secondsRemaining = new(0);
+    private readonly SyncVar<int> joiningCycleLimit = new(3);
+    private readonly SyncVar<int> secondsUntilJoiningCloses = new(0);
     private readonly SyncVar<float> speedMultiplier = new(1f);
     private readonly SyncVar<int> movementBaseLevel = new(1);
     private readonly SyncVar<float> movementSpeedReductionPerLevel = new(0.05f);
@@ -30,6 +34,9 @@ public class MP_CycleTimer : NetworkBehaviour
     public int CurrentCycle => isSpawned ? currentCycle.value : 0;
     public int FinalCycle => Mathf.Max(1, finalCycle);
     public int SecondsRemaining => isSpawned ? secondsRemaining.value : 0;
+    public bool IsJoiningOpen => CurrentCycle <= joiningCycleLimit.value;
+    public int SecondsUntilJoiningCloses => isSpawned ? secondsUntilJoiningCloses.value : 0;
+    public bool JoiningOpenForWholeRound => joiningCycleLimit.value > FinalCycle;
     public float SpeedMultiplier => isSpawned ? speedMultiplier.value : 1f;
     public int MovementBaseLevel => isSpawned ? movementBaseLevel.value : 1;
     public float MovementSpeedReductionPerLevel => isSpawned ? movementSpeedReductionPerLevel.value : 0.05f;
@@ -70,8 +77,10 @@ public class MP_CycleTimer : NetworkBehaviour
             return;
 
         nextCycleAt = 0d;
+        joiningCycleLimit.value = Mathf.Max(1, cyclesOpenForJoining);
         currentCycle.value = 0;
         secondsRemaining.value = 0;
+        secondsUntilJoiningCloses.value = GetSecondsUntilJoiningCloses(0d);
         speedMultiplier.value = 1f;
         movementBaseLevel.value = 1;
         movementSpeedReductionPerLevel.value = Mathf.Clamp01(movementSpeedReductionPerLevelPercent / 100f);
@@ -112,6 +121,7 @@ public class MP_CycleTimer : NetworkBehaviour
             {
                 nextCycleAt = 0d;
                 secondsRemaining.value = 0;
+                secondsUntilJoiningCloses.value = 0;
                 manager?.EndRoundForLargestCloud();
                 return;
             }
@@ -123,17 +133,40 @@ public class MP_CycleTimer : NetworkBehaviour
         int remaining = Mathf.CeilToInt((float)Math.Max(0d, nextCycleAt - now));
         if (secondsRemaining.value != remaining)
             secondsRemaining.value = remaining;
+        int joiningRemaining = GetSecondsUntilJoiningCloses(now);
+        if (secondsUntilJoiningCloses.value != joiningRemaining)
+            secondsUntilJoiningCloses.value = joiningRemaining;
     }
 
     private void StartCycleTimer(double now)
     {
-        float duration = currentCycle.value == 1
-            ? Mathf.Max(1f, firstCycleDurationSeconds)
-            : currentCycle.value >= FinalCycle
-                ? Mathf.Max(1f, finalCycleDurationSeconds)
-                : Mathf.Max(1f, cycleDurationSeconds);
+        float duration = GetCycleDuration(currentCycle.value);
         nextCycleAt = now + duration;
         secondsRemaining.value = Mathf.CeilToInt(duration);
+        secondsUntilJoiningCloses.value = GetSecondsUntilJoiningCloses(now);
+    }
+
+    private float GetCycleDuration(int cycle) => cycle == 1
+        ? Mathf.Max(1f, firstCycleDurationSeconds)
+        : cycle >= FinalCycle
+            ? Mathf.Max(1f, finalCycleDurationSeconds)
+            : Mathf.Max(1f, cycleDurationSeconds);
+
+    private int GetSecondsUntilJoiningCloses(double now)
+    {
+        if (JoiningOpenForWholeRound)
+            return -1;
+
+        int cycle = currentCycle.value;
+        if (cycle > joiningCycleLimit.value)
+            return 0;
+
+        double remaining = cycle > 0 ? Math.Max(0d, nextCycleAt - now) : 0d;
+        for (int upcomingCycle = Math.Max(1, cycle + 1);
+             upcomingCycle <= joiningCycleLimit.value; upcomingCycle++)
+            remaining += GetCycleDuration(upcomingCycle);
+
+        return Mathf.CeilToInt((float)remaining);
     }
 
     private void BeginCycle(int cycle)
@@ -145,9 +178,9 @@ public class MP_CycleTimer : NetworkBehaviour
             ? Mathf.Max(1, baseLevelsPerCycle[baseLevelIndex]) : 1;
         foodSizeMultiplier.value = GetFoodSizeMultiplierForCycle(cycle);
         foodExpMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodExpMultiplierPerCycle), cycle - 1);
-        if (cycle > 1 && MP_PlayerManager.Instance != null)
-            MP_PlayerManager.Instance.CloseJoining();
         currentCycle.value = cycle;
+        if (!IsJoiningOpen)
+            MP_PlayerManager.Instance?.CloseJoining();
     }
 
     public void StopForRoundEnd()
@@ -157,6 +190,7 @@ public class MP_CycleTimer : NetworkBehaviour
 
         nextCycleAt = 0d;
         secondsRemaining.value = 0;
+        secondsUntilJoiningCloses.value = 0;
     }
 
     private void HandleCycleChanged(int cycle)

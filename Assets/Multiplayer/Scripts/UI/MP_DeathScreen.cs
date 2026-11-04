@@ -13,6 +13,11 @@ public class MP_DeathScreen : MonoBehaviour
     private MP_PlayerManager roundManager;
     private bool respawnPending;
     private float respawnRequestedAt;
+    private string deathMessage = "";
+    private string respawnStatus = "";
+    private int displayedJoinSeconds = int.MinValue;
+    private bool displayedJoiningOpen;
+    private bool displayedUnlimitedJoining;
     private const float RespawnTimeout = 10f;
 
     private void OnEnable()
@@ -91,14 +96,14 @@ public class MP_DeathScreen : MonoBehaviour
             respawnButton.gameObject.SetActive(canRespawn);
             respawnButton.interactable = canRespawn;
         }
+        deathMessage = string.IsNullOrWhiteSpace(killerName)
+            ? "You were eaten!"
+            : $"You were eaten by \n{killerName}!";
+        respawnStatus = "";
+        displayedJoinSeconds = int.MinValue;
         if (messageText != null)
-        {
-            // Player names are text, not TMP formatting tags
             messageText.richText = false;
-            messageText.text = string.IsNullOrWhiteSpace(killerName)
-                ? "You were eaten!"
-                : $"You were eaten by \n{killerName}!";
-        }
+        RefreshDeathMessage();
 
         deathPanel.SetActive(true);
     }
@@ -115,7 +120,7 @@ public class MP_DeathScreen : MonoBehaviour
     {
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         return (roundManager == null || !roundManager.RoundEnded) &&
-            timer != null && timer.CurrentCycle == 1;
+            timer != null && timer.IsJoiningOpen;
     }
 
     public void RequestRespawn()
@@ -128,8 +133,9 @@ public class MP_DeathScreen : MonoBehaviour
         respawnRequestedAt = Time.unscaledTime;
         if (respawnButton != null)
             respawnButton.interactable = false;
-        if (messageText != null)
-            messageText.text = "Respawning...";
+        respawnStatus = "Respawning...";
+        displayedJoinSeconds = int.MinValue;
+        RefreshDeathMessage();
 
         MP_PlayerManager manager = MP_PlayerManager.Instance;
         if (manager == null || !manager.TryRequestRespawn())
@@ -159,6 +165,9 @@ public class MP_DeathScreen : MonoBehaviour
             respawnButton.gameObject.activeSelf != CanRespawn())
             respawnButton.gameObject.SetActive(CanRespawn());
 
+        if (deathPanel.activeSelf)
+            RefreshDeathMessage();
+
         if (respawnPending && Time.unscaledTime - respawnRequestedAt >= RespawnTimeout)
             ShowRespawnFailure("Respawn has not completed. Please try again.");
     }
@@ -177,7 +186,35 @@ public class MP_DeathScreen : MonoBehaviour
         respawnPending = false;
         if (respawnButton != null)
             respawnButton.interactable = CanRespawn();
-        if (messageText != null)
-            messageText.text = message;
+        respawnStatus = message;
+        displayedJoinSeconds = int.MinValue;
+        RefreshDeathMessage();
+    }
+
+    private void RefreshDeathMessage()
+    {
+        if (messageText == null)
+            return;
+
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        bool joiningOpen = (roundManager == null || !roundManager.RoundEnded) &&
+            timer != null && timer.IsJoiningOpen;
+        bool unlimitedJoining = joiningOpen && timer.JoiningOpenForWholeRound;
+        int seconds = joiningOpen ? timer.SecondsUntilJoiningCloses : 0;
+        if (seconds == displayedJoinSeconds && joiningOpen == displayedJoiningOpen &&
+            unlimitedJoining == displayedUnlimitedJoining)
+            return;
+
+        displayedJoinSeconds = seconds;
+        displayedJoiningOpen = joiningOpen;
+        displayedUnlimitedJoining = unlimitedJoining;
+        string text = deathMessage;
+        if (unlimitedJoining)
+            text += "\nRespawning stays open for the whole round.";
+        else if (joiningOpen)
+            text += $"\n{seconds / 60:00}:{seconds % 60:00} until respawning closes.";
+        if (!string.IsNullOrEmpty(respawnStatus))
+            text += $"\n{respawnStatus}";
+        messageText.text = text;
     }
 }

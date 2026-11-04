@@ -146,7 +146,7 @@ public class MP_StartScreen : MonoBehaviour
             statusText.text = status;
 
         bool joiningOpen = manager == null || (!manager.RoundEnded &&
-            (MP_CycleTimer.Instance == null || MP_CycleTimer.Instance.CurrentCycle <= 1));
+            (MP_CycleTimer.Instance == null || MP_CycleTimer.Instance.IsJoiningOpen));
         bool canStart = manager != null && manager.CanStart;
         if (startButton != null)
         {
@@ -167,7 +167,7 @@ public class MP_StartScreen : MonoBehaviour
             spectatorButton.interactable = canSpectate;
         if (spectatorButtonText != null)
         {
-            string buttonLabel = canSpectate ? "Spectate" : "Connecting";
+            string buttonLabel = canSpectate ? "Spectator Mode" : "Connecting";
             if (spectatorButtonText.text != buttonLabel)
                 spectatorButtonText.text = buttonLabel;
         }
