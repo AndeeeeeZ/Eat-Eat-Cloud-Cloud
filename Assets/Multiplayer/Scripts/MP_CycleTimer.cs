@@ -8,12 +8,15 @@ public class MP_CycleTimer : NetworkBehaviour
     [SerializeField, Min(1)] private int finalCycle = 5;
     [SerializeField, Min(1f)] private float finalCycleDurationSeconds = 180f;
     [SerializeField, Min(1f)] private float speedMultiplierPerCycle = 1.1f;
+    [Tooltip("One movement base level per cycle, starting with cycle 1. Later cycles reuse the last entry")]
+    [SerializeField] private int[] baseLevelsPerCycle = { 1, 1, 1, 1, 1 };
     [SerializeField, Min(1f)] private float foodSizeMultiplierPerCycle = 1.1f;
     [SerializeField, Min(1f)] private float foodExpMultiplierPerCycle = 1.1f;
 
     private readonly SyncVar<int> currentCycle = new(0);
     private readonly SyncVar<int> secondsRemaining = new(0);
     private readonly SyncVar<float> speedMultiplier = new(1f);
+    private readonly SyncVar<int> movementBaseLevel = new(1);
     private readonly SyncVar<float> foodSizeMultiplier = new(1f);
     private readonly SyncVar<float> foodExpMultiplier = new(1f);
     private double nextCycleAt;
@@ -23,6 +26,7 @@ public class MP_CycleTimer : NetworkBehaviour
     public int FinalCycle => Mathf.Max(1, finalCycle);
     public int SecondsRemaining => isSpawned ? secondsRemaining.value : 0;
     public float SpeedMultiplier => isSpawned ? speedMultiplier.value : 1f;
+    public int MovementBaseLevel => isSpawned ? movementBaseLevel.value : 1;
     public float FoodSizeMultiplier => isSpawned ? foodSizeMultiplier.value : 1f;
     public float FoodExpMultiplier => isSpawned ? foodExpMultiplier.value : 1f;
 
@@ -62,6 +66,7 @@ public class MP_CycleTimer : NetworkBehaviour
         currentCycle.value = 0;
         secondsRemaining.value = 0;
         speedMultiplier.value = 1f;
+        movementBaseLevel.value = 1;
         foodSizeMultiplier.value = 1f;
         foodExpMultiplier.value = 1f;
     }
@@ -123,6 +128,10 @@ public class MP_CycleTimer : NetworkBehaviour
     private void BeginCycle(int cycle)
     {
         speedMultiplier.value = Mathf.Pow(Mathf.Max(1f, speedMultiplierPerCycle), cycle - 1);
+        int baseLevelIndex = baseLevelsPerCycle != null
+            ? Mathf.Min(cycle - 1, baseLevelsPerCycle.Length - 1) : -1;
+        movementBaseLevel.value = baseLevelIndex >= 0
+            ? Mathf.Max(1, baseLevelsPerCycle[baseLevelIndex]) : 1;
         foodSizeMultiplier.value = GetFoodSizeMultiplierForCycle(cycle);
         foodExpMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodExpMultiplierPerCycle), cycle - 1);
         if (cycle > 1 && MP_PlayerManager.Instance != null)

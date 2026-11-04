@@ -75,6 +75,7 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         float speedMultiplier = timer != null ? timer.SpeedMultiplier : 1f;
+        speedMultiplier *= GetSizeSpeedMultiplier(timer);
         if (enemyAI != null)
             speedMultiplier *= enemyAI.MovementSpeedMultiplier;
         Vector3 nextPosition = transform.position +
@@ -129,7 +130,9 @@ public class MP_PlayerMovement : NetworkBehaviour
     {
         float speedMultiplier = MP_CycleTimer.Instance != null
             ? MP_CycleTimer.Instance.SpeedMultiplier : 1f;
-        float speed = baseMoveSpeed != null ? baseMoveSpeed.Value * speedMultiplier : 0f;
+        float speed = baseMoveSpeed != null
+            ? baseMoveSpeed.Value * speedMultiplier * GetSizeSpeedMultiplier(MP_CycleTimer.Instance)
+            : 0f;
         bool roundEnded = MP_PlayerManager.Instance != null &&
             MP_PlayerManager.Instance.RoundEnded;
         Vector2 direction = !roundEnded && playerInput != null
@@ -201,6 +204,14 @@ public class MP_PlayerMovement : NetworkBehaviour
             ? ping.PingMilliseconds.Value * 0.001f : 0.16f;
         // Include the transform's buffered interpolation behind the server state
         return Mathf.Clamp(roundTrip * 0.5f + 2f * Time.fixedDeltaTime, 0.08f, 0.35f);
+    }
+
+    private float GetSizeSpeedMultiplier(MP_CycleTimer timer)
+    {
+        int baseLevel = timer != null ? timer.MovementBaseLevel : 1;
+        int playerLevel = playerGrowth != null ? playerGrowth.Level : 1;
+        int levelsAboveBase = Mathf.Clamp(playerLevel - baseLevel, 0, 4);
+        return 1f - levelsAboveBase * 0.05f;
     }
 
     private void CacheVisualChildren()
