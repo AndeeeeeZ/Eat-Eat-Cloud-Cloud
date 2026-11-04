@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class MP_CycleTimer : NetworkBehaviour
 {
+    [SerializeField, Min(1f)] private float firstCycleDurationSeconds = 60f;
     [SerializeField, Min(1f)] private float cycleDurationSeconds = 60f;
     [SerializeField, Min(1)] private int finalCycle = 5;
     [SerializeField, Min(1f)] private float finalCycleDurationSeconds = 180f;
@@ -126,9 +127,11 @@ public class MP_CycleTimer : NetworkBehaviour
 
     private void StartCycleTimer(double now)
     {
-        float duration = currentCycle.value >= FinalCycle
-            ? Mathf.Max(1f, finalCycleDurationSeconds)
-            : Mathf.Max(1f, cycleDurationSeconds);
+        float duration = currentCycle.value == 1
+            ? Mathf.Max(1f, firstCycleDurationSeconds)
+            : currentCycle.value >= FinalCycle
+                ? Mathf.Max(1f, finalCycleDurationSeconds)
+                : Mathf.Max(1f, cycleDurationSeconds);
         nextCycleAt = now + duration;
         secondsRemaining.value = Mathf.CeilToInt(duration);
     }

@@ -97,7 +97,7 @@ public class MP_DeathScreen : MonoBehaviour
             messageText.richText = false;
             messageText.text = string.IsNullOrWhiteSpace(killerName)
                 ? "You were eaten!"
-                : $"You were eaten by {killerName}!";
+                : $"You were eaten by \n{killerName}!";
         }
 
         deathPanel.SetActive(true);
