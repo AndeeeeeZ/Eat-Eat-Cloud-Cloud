@@ -60,6 +60,12 @@ public class MP_CameraController : MonoBehaviour
         RemoveTarget();
 
         cam.Follow = target;
+        Vector3 cameraPosition = cam.transform.position;
+        cameraPosition.x = target.position.x;
+        cameraPosition.y = target.position.y;
+        cam.ForceCameraPosition(cameraPosition, cam.transform.rotation);
+        // Reset follow damping after switching targets
+        cam.PreviousStateIsValid = false;
 
         currentPlayer = target.GetComponentInParent<MP_PlayerGrowth>();
 
