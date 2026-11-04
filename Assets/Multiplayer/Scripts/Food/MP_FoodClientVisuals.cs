@@ -8,11 +8,15 @@ internal class MP_FoodClientVisuals
     {
         public readonly Vector2 Position;
         public readonly float Size;
+        public readonly bool IsEventFood;
+        public readonly Color EventColor;
 
-        public VisualData(Vector2 position, float size)
+        public VisualData(Vector2 position, float size, bool isEventFood, Color eventColor)
         {
             Position = position;
             Size = size;
+            IsEventFood = isEventFood;
+            EventColor = eventColor;
         }
     }
 
@@ -75,11 +79,12 @@ internal class MP_FoodClientVisuals
     }
 
     public void ApplyChunk(int chunkIndex, uint[] ids, Vector2[] positions,
-        float[] sizes, bool[] fadeIn, uint[] retiredIds)
+        float[] sizes, bool[] fadeIn, bool[] eventFood, Color eventColor, uint[] retiredIds)
     {
-        if (ids == null || positions == null || sizes == null || fadeIn == null || retiredIds == null ||
+        if (ids == null || positions == null || sizes == null || fadeIn == null ||
+            eventFood == null || retiredIds == null ||
             ids.Length != positions.Length || ids.Length != sizes.Length ||
-            ids.Length != fadeIn.Length)
+            ids.Length != fadeIn.Length || ids.Length != eventFood.Length)
             return;
 
         bool firstSnapshot = !idsByChunk.TryGetValue(chunkIndex, out HashSet<uint> current);
@@ -95,15 +100,15 @@ internal class MP_FoodClientVisuals
             incomingIds.Add(ids[i]);
             if (current.Add(ids[i]))
             {
-                VisualData data = new(positions[i], sizes[i]);
+                VisualData data = new(positions[i], sizes[i], eventFood[i], eventColor);
                 records.Add(ids[i], data);
                 if (IsNearCamera(data))
-                    Show(ids[i], positions[i], sizes[i], !firstSnapshot && fadeIn[i]);
+                    Show(ids[i], data, !firstSnapshot && fadeIn[i]);
             }
             else if (records.TryGetValue(ids[i], out VisualData previous) &&
                      !Mathf.Approximately(previous.Size, sizes[i]))
             {
-                VisualData data = new(positions[i], sizes[i]);
+                VisualData data = new(positions[i], sizes[i], eventFood[i], eventColor);
                 records[ids[i]] = data;
                 if (active.TryGetValue(ids[i], out Visual visual))
                     Grow(visual, data);
@@ -209,13 +214,14 @@ internal class MP_FoodClientVisuals
         pool.Clear();
     }
 
-    private void Show(uint id, Vector2 position, float size, bool fadeIn)
+    private void Show(uint id, VisualData data, bool fadeIn)
     {
         Visual visual = pool.Count > 0 ? pool.Pop() : CreateVisual();
-        visual.GameObject.transform.position = (Vector3)position + positionOffset * size;
-        visual.GameObject.transform.localScale = visualScale * size;
+        visual.GameObject.transform.position = (Vector3)data.Position + positionOffset * data.Size;
+        visual.GameObject.transform.localScale = visualScale * data.Size;
         visual.Renderer.sprite = food != null ? food.GetShape(id, source.sprite) : source.sprite;
-        visual.BaseColor = food != null ? food.GetColor(id, source.color) : source.color;
+        visual.BaseColor = data.IsEventFood ? data.EventColor :
+            food != null ? food.GetColor(id, source.color) : source.color;
         visual.GameObject.SetActive(true);
         active.Add(id, visual);
         bool animate = fadeIn && fadeInDuration > 0f;
@@ -239,7 +245,7 @@ internal class MP_FoodClientVisuals
         {
             bool visible = IsNearCamera(entry.Value);
             if (visible && !active.ContainsKey(entry.Key))
-                Show(entry.Key, entry.Value.Position, entry.Value.Size, false);
+                Show(entry.Key, entry.Value, false);
             else if (!visible && active.TryGetValue(entry.Key, out Visual visual))
             {
                 active.Remove(entry.Key);

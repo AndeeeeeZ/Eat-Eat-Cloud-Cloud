@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class MP_MiniMap : MonoBehaviour
@@ -5,7 +6,10 @@ public class MP_MiniMap : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Image mapImage;
     [SerializeField] private RectTransform playerIndicatorRoot;
     [SerializeField] private UnityEngine.UI.Image playerIndicator;
+    [SerializeField] private UnityEngine.UI.Image eventZoneTemplate;
+    [SerializeField, Min(0f)] private float minimumEventZoneDiameter = 10f;
 
+    private readonly List<UnityEngine.UI.Image> eventZoneIndicators = new();
     private MP_Player displayedPlayer;
     private MP_PlayerMovement displayedMovement;
     private MP_PlayerCostume displayedCostume;
@@ -32,6 +36,13 @@ public class MP_MiniMap : MonoBehaviour
         playerIndicatorRoot.anchorMax = new Vector2(0.5f, 0.5f);
         playerIndicatorRoot.pivot = new Vector2(0.5f, 0.5f);
         playerIndicator.enabled = false;
+
+        if (eventZoneTemplate == null || eventZoneTemplate.sprite == null ||
+            eventZoneTemplate.transform.parent != mapImage.rectTransform ||
+            eventZoneTemplate == playerIndicator)
+            Debug.LogError("Assign a circular event zone Image directly under the map Image on MP_MiniMap", this);
+        else
+            eventZoneTemplate.gameObject.SetActive(false);
     }
 
     private void LateUpdate()
@@ -41,6 +52,7 @@ public class MP_MiniMap : MonoBehaviour
         MP_Player player = spectator != null && spectator.IsSpectating
             ? spectator.ViewedPlayer : manager != null ? manager.LocalPlayer : null;
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
+        UpdateEventZones(boundary);
         if (player == null || boundary == null || boundary.Size.x <= 0f || boundary.Size.y <= 0f)
         {
             playerIndicator.enabled = false;
@@ -79,10 +91,69 @@ public class MP_MiniMap : MonoBehaviour
             (normalized.y - 0.5f) * mapRect.rect.height);
     }
 
+    private void UpdateEventZones(MP_GameBoundary boundary)
+    {
+        MP_FoodSpawner spawner = MP_FoodSpawner.Instance;
+        IReadOnlyList<MP_FoodEventZone> zones = spawner != null
+            ? spawner.ActiveEventZones : null;
+        int count = eventZoneTemplate != null && eventZoneTemplate.sprite != null &&
+            eventZoneTemplate.transform.parent == mapImage.rectTransform &&
+            boundary != null && boundary.Size.x > 0f && boundary.Size.y > 0f &&
+            zones != null ? zones.Count : 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            if (i >= eventZoneIndicators.Count)
+            {
+                UnityEngine.UI.Image marker = Instantiate(eventZoneTemplate, mapImage.rectTransform);
+                marker.name = "Event Zone Indicator";
+                marker.raycastTarget = false;
+                marker.transform.SetAsFirstSibling();
+                marker.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                marker.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                marker.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                eventZoneIndicators.Add(marker);
+            }
+
+            UnityEngine.UI.Image indicator = eventZoneIndicators[i];
+            MP_FoodEventZone zone = zones[i];
+            RectTransform mapRect = mapImage.rectTransform;
+            RectTransform markerRect = indicator.rectTransform;
+            Vector2 offset = zone.Center - boundary.Center;
+            Vector2 position = new Vector2(
+                offset.x / boundary.Size.x * mapRect.rect.width,
+                offset.y / boundary.Size.y * mapRect.rect.height);
+            Vector2 diameter = new Vector2(
+                2f * zone.Radius / boundary.Size.x * mapRect.rect.width,
+                2f * zone.Radius / boundary.Size.y * mapRect.rect.height);
+            diameter.x = Mathf.Max(diameter.x, minimumEventZoneDiameter);
+            diameter.y = Mathf.Max(diameter.y, minimumEventZoneDiameter);
+            if (markerRect.anchoredPosition != position)
+                markerRect.anchoredPosition = position;
+            if (markerRect.sizeDelta != diameter)
+                markerRect.sizeDelta = diameter;
+            Color color = zone.Color;
+            color.a *= eventZoneTemplate.color.a;
+            if (indicator.color != color)
+                indicator.color = color;
+            if (!indicator.enabled)
+                indicator.enabled = true;
+            if (!indicator.gameObject.activeSelf)
+                indicator.gameObject.SetActive(true);
+        }
+
+        for (int i = count; i < eventZoneIndicators.Count; i++)
+            if (eventZoneIndicators[i].gameObject.activeSelf)
+                eventZoneIndicators[i].gameObject.SetActive(false);
+    }
+
     private void OnDisable()
     {
         if (playerIndicator != null)
             playerIndicator.enabled = false;
+        foreach (UnityEngine.UI.Image indicator in eventZoneIndicators)
+            if (indicator != null)
+                indicator.gameObject.SetActive(false);
         displayedPlayer = null;
         displayedMovement = null;
         displayedCostume = null;

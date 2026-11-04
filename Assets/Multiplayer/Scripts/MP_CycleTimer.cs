@@ -26,6 +26,9 @@ public class MP_CycleTimer : NetworkBehaviour
     public float FoodSizeMultiplier => isSpawned ? foodSizeMultiplier.value : 1f;
     public float FoodExpMultiplier => isSpawned ? foodExpMultiplier.value : 1f;
 
+    public float GetFoodSizeMultiplierForCycle(int cycle) =>
+        Mathf.Pow(Mathf.Max(1f, foodSizeMultiplierPerCycle), Mathf.Max(1, cycle) - 1);
+
     public event Action<int> OnCycleChanged;
     public event Action<int> OnSecondsRemainingChanged;
 
@@ -120,7 +123,7 @@ public class MP_CycleTimer : NetworkBehaviour
     private void BeginCycle(int cycle)
     {
         speedMultiplier.value = Mathf.Pow(Mathf.Max(1f, speedMultiplierPerCycle), cycle - 1);
-        foodSizeMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodSizeMultiplierPerCycle), cycle - 1);
+        foodSizeMultiplier.value = GetFoodSizeMultiplierForCycle(cycle);
         foodExpMultiplier.value = Mathf.Pow(Mathf.Max(1f, foodExpMultiplierPerCycle), cycle - 1);
         if (cycle > 1 && MP_PlayerManager.Instance != null)
             MP_PlayerManager.Instance.CloseJoining();
