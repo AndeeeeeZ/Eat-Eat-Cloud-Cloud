@@ -691,7 +691,7 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   baseMoveSpeed: {fileID: 11400000, guid: 65cc2f79835e389409196ad2e87ecee9, type: 2}
-  boostSpeedMultiplier: 2.3
+  boostSpeedMultiplier: 1.8
   boostDurationSeconds: 1.5
   boostCooldownSeconds: 8
 --- !u!114 &-80913700791028593

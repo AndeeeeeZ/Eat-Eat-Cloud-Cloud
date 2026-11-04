@@ -235,6 +235,9 @@ public class MP_FoodSpawner : NetworkBehaviour
     private const int CellsPerChunk = 4;
     private const int FailedRegionChecksPerFill = 64;
     private const double FailedFillRetrySeconds = 1d;
+    private const int NearbyFoodCount = 3;
+    private readonly Vector2[] nearbyFoodPositions = new Vector2[NearbyFoodCount];
+    private readonly float[] nearbyFoodDistanceSquared = new float[NearbyFoodCount];
 
     public static MP_FoodSpawner Instance { get; private set; }
     public int ActiveFoodCount => foodRecords.Count;
@@ -251,14 +254,14 @@ public class MP_FoodSpawner : NetworkBehaviour
         return new Vector2(halfHeight * clampedAspect, halfHeight);
     }
 
-    public bool TryGetNearestFoodInView(Vector2 center, Vector2 viewExtents,
-        out Vector2 foodPosition)
+    public bool TryGetNearbyFoodInView(Vector2 center, Vector2 viewExtents,
+        Vector2? currentDestination, out Vector2 foodPosition)
     {
         foodPosition = default;
         if (!isServer || !isSpawned || viewExtents.x <= 0f || viewExtents.y <= 0f)
             return false;
 
-        float nearestDistanceSquared = float.MaxValue;
+        int foodCount = 0;
         foreach (FoodRecord record in foodRecords.Values)
         {
             Vector2 offset = record.HitCenter - center;
@@ -266,15 +269,37 @@ public class MP_FoodSpawner : NetworkBehaviour
                 Mathf.Abs(offset.y) > viewExtents.y)
                 continue;
 
+            if (currentDestination.HasValue && record.HitCenter == currentDestination.Value)
+            {
+                foodPosition = record.HitCenter;
+                return true;
+            }
+
             float distanceSquared = offset.sqrMagnitude;
-            if (distanceSquared >= nearestDistanceSquared)
+            int insertAt = 0;
+            while (insertAt < foodCount &&
+                distanceSquared >= nearbyFoodDistanceSquared[insertAt])
+                insertAt++;
+
+            if (insertAt >= NearbyFoodCount)
                 continue;
 
-            nearestDistanceSquared = distanceSquared;
-            foodPosition = record.HitCenter;
+            for (int i = Mathf.Min(foodCount, NearbyFoodCount - 1); i > insertAt; i--)
+            {
+                nearbyFoodPositions[i] = nearbyFoodPositions[i - 1];
+                nearbyFoodDistanceSquared[i] = nearbyFoodDistanceSquared[i - 1];
+            }
+
+            nearbyFoodPositions[insertAt] = record.HitCenter;
+            nearbyFoodDistanceSquared[insertAt] = distanceSquared;
+            foodCount = Mathf.Min(foodCount + 1, NearbyFoodCount);
         }
 
-        return nearestDistanceSquared < float.MaxValue;
+        if (foodCount == 0)
+            return false;
+
+        foodPosition = nearbyFoodPositions[UnityEngine.Random.Range(0, foodCount)];
+        return true;
     }
 
     protected override void OnSpawned(bool asServer)

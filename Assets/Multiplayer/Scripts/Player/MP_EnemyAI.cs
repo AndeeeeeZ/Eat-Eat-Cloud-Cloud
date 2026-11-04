@@ -7,6 +7,8 @@ using UnityEngine;
 [RequireComponent(typeof(MP_PlayerGrowth))]
 public class MP_EnemyAI : NetworkBehaviour
 {
+    private const int NearbyPreyCount = 3;
+
     [System.Serializable]
     public struct EnemyPreset
     {
@@ -45,6 +47,8 @@ public class MP_EnemyAI : NetworkBehaviour
     private MP_Player target;
     private MP_Player recentlyChasedTarget;
     private MP_Player fleeWallTarget;
+    private readonly MP_Player[] nearbyPrey = new MP_Player[NearbyPreyCount];
+    private readonly float[] nearbyPreyDistanceSquared = new float[NearbyPreyCount];
     private Vector2 foodDestination;
     private Vector2 currentDirection;
     private Vector2 fleeWallDirection;
@@ -293,8 +297,6 @@ public class MP_EnemyAI : NetworkBehaviour
 
             fleeWallTarget = null;
             fleeWallDirection = Vector2.zero;
-            if (offset.sqrMagnitude > 0.0001f)
-                movement.TryActivateSpeedBoostForAI();
             return SmoothDirection(offset.normalized);
         }
 
@@ -304,10 +306,7 @@ public class MP_EnemyAI : NetworkBehaviour
         {
             Vector2 toFood = foodDestination - (Vector2)transform.position;
             if (toFood.sqrMagnitude > 0.0001f)
-            {
-                movement.TryActivateSpeedBoostForAI();
                 return SmoothDirection(toFood.normalized);
-            }
         }
 
         return GetWanderMovementDirection(currentDirection);
@@ -487,6 +486,7 @@ public class MP_EnemyAI : NetworkBehaviour
         bool wasFleeing = fleeing;
         bool keepCurrentChase = previousTarget != null && !wasFleeing &&
             HasValidTarget(canChase, viewExtents);
+        Vector2? currentFoodDestination = hasFoodDestination ? foodDestination : (Vector2?)null;
         target = null;
         fleeing = false;
         hasFoodDestination = false;
@@ -496,8 +496,7 @@ public class MP_EnemyAI : NetworkBehaviour
             return;
 
         float nearestThreatSquared = float.MaxValue;
-        float nearestPreySquared = float.MaxValue;
-        MP_Player nearestPrey = null;
+        int preyCount = 0;
 
         // Human and AI clouds share the same target list
         foreach (MP_PlayerStats otherStats in manager.Players)
@@ -522,23 +521,40 @@ public class MP_EnemyAI : NetworkBehaviour
                 fleeing = true;
             }
             else if (canChase && otherStats.Level < stats.Level &&
-                (other != recentlyChasedTarget || now >= recentlyChasedTargetAvailableAt) &&
-                distanceSquared < nearestPreySquared)
+                (other != recentlyChasedTarget || now >= recentlyChasedTargetAvailableAt))
             {
-                nearestPrey = other;
-                nearestPreySquared = distanceSquared;
+                int insertAt = 0;
+                while (insertAt < preyCount &&
+                    distanceSquared >= nearbyPreyDistanceSquared[insertAt])
+                    insertAt++;
+
+                if (insertAt >= NearbyPreyCount)
+                    continue;
+
+                for (int i = Mathf.Min(preyCount, NearbyPreyCount - 1); i > insertAt; i--)
+                {
+                    nearbyPrey[i] = nearbyPrey[i - 1];
+                    nearbyPreyDistanceSquared[i] = nearbyPreyDistanceSquared[i - 1];
+                }
+
+                nearbyPrey[insertAt] = other;
+                nearbyPreyDistanceSquared[insertAt] = distanceSquared;
+                preyCount = Mathf.Min(preyCount + 1, NearbyPreyCount);
             }
         }
 
         if (target == null)
         {
-            target = keepCurrentChase ? previousTarget : nearestPrey;
+            target = keepCurrentChase ? previousTarget :
+                preyCount > 0 ? nearbyPrey[Random.Range(0, preyCount)] : null;
             if (target != null && (target != previousTarget || wasFleeing))
                 chaseEndsAt = now + Mathf.Max(0.1f, activePreset.chaseDurationSeconds);
         }
 
+        System.Array.Clear(nearbyPrey, 0, preyCount);
+
         if (target == null && foodSpawner != null)
-            hasFoodDestination = foodSpawner.TryGetNearestFoodInView((Vector2)transform.position,
-                viewExtents, out foodDestination);
+            hasFoodDestination = foodSpawner.TryGetNearbyFoodInView((Vector2)transform.position,
+                viewExtents, currentFoodDestination, out foodDestination);
     }
 }
