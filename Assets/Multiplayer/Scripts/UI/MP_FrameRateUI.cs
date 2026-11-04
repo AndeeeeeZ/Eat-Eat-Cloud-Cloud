@@ -24,7 +24,7 @@ public class MP_FrameRateUI : MonoBehaviour
 
         elapsedTime = 0f;
         frameCount = 0;
-        frameRateText.text = "FPS: --";
+        frameRateText.text = "-- FPS";
     }
 
     private void Update()
@@ -40,7 +40,7 @@ public class MP_FrameRateUI : MonoBehaviour
             return;
 
         int framesPerSecond = Mathf.RoundToInt(frameCount / elapsedTime);
-        frameRateText.SetText("FPS: {0}", framesPerSecond);
+        frameRateText.SetText("{0} FPS", framesPerSecond);
         elapsedTime = 0f;
         frameCount = 0;
     }

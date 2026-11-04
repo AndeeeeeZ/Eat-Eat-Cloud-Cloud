@@ -30,13 +30,13 @@ public class MP_PingUI : MonoBehaviour
     {
         string text;
         if (ping == null || !ping.IsConnected)
-            text = "Ping: Disconnected";
+            text = "Disconnected";
         else if (ping.HasTimedOut)
-            text = "Ping: Timed out";
+            text = "Timed out";
         else if (ping.PingMilliseconds.HasValue)
-            text = $"Ping: {ping.PingMilliseconds.Value} ms";
+            text = $"{ping.PingMilliseconds.Value} ms";
         else
-            text = "Ping: Measuring...";
+            text = "Measuring...";
 
         if (text == previousText)
             return;
