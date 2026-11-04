@@ -180,7 +180,7 @@ public class MP_PlayerMovement : NetworkBehaviour
             (roundEnded || Time.realtimeSinceStartupAsDouble >= boostEndsAt))
             boostActive.value = false;
 
-        if (!isServer || roundEnded)
+        if (!isServer || roundEnded || player == null || !player.IsAlive)
             return;
 
         Vector2 previousPosition = transform.position;

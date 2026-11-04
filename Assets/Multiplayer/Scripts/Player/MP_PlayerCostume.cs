@@ -4,6 +4,13 @@ using UnityEngine.Rendering;
 
 public class MP_PlayerCostume : NetworkBehaviour
 {
+    private struct EatenPart
+    {
+        public Vector3 StartPosition;
+        public Vector3 StartScale;
+        public Color StartColor;
+    }
+
     [SerializeField] private PlayerCostume catalog;
     [SerializeField] private SpriteRenderer cloudBase, bottom, rightSide, leftSide, face;
     [SerializeField] private SpriteRenderer ring;
@@ -19,6 +26,14 @@ public class MP_PlayerCostume : NetworkBehaviour
     private Vector2 faceOffset;
     private Vector2 previousPosition;
     private bool hasPreviousPosition;
+    private SpriteRenderer[] cloudParts;
+    private Vector3[] cloudPartRestPositions;
+    private EatenPart[] eatenParts;
+    private Vector2 eatTarget;
+    private float eatStartedAt;
+    private float eatDuration;
+    private Canvas nameCanvas;
+    private bool nameCanvasWasEnabled;
 
     private readonly SyncVar<MP_CostumeIndices> indices = new(default);
     public MP_CostumeIndices CurrentIndices => indices.value;
@@ -82,6 +97,12 @@ public class MP_PlayerCostume : NetworkBehaviour
         enemyAI = GetComponent<MP_EnemyAI>();
         if (face != null)
             faceRestPosition = face.transform.localPosition;
+        cloudParts = new[] { cloudBase, bottom, rightSide, leftSide, face, ring };
+        cloudPartRestPositions = new Vector3[cloudParts.Length];
+        for (int i = 0; i < cloudParts.Length; i++)
+            if (cloudParts[i] != null)
+                cloudPartRestPositions[i] = cloudParts[i].transform.localPosition;
+        nameCanvas = GetComponentInChildren<Canvas>(true);
 
         if (GetComponent<SortingGroup>() == null)
         {
@@ -113,6 +134,57 @@ public class MP_PlayerCostume : NetworkBehaviour
         ring.transform.Rotate(0f, 0f, catalog.RingSpinSpeed * Time.deltaTime);
         ring.color = CostumeRingAnimation.WithBreathingAlpha(
             ring.color, Time.time, catalog);
+    }
+
+    internal void BeginBeingEaten(Vector2 target, float duration)
+    {
+        if (!isClient || eatenParts != null)
+            return;
+
+        eatTarget = target;
+        eatDuration = Mathf.Max(0.01f, duration);
+        eatStartedAt = Time.unscaledTime;
+        eatenParts = new EatenPart[cloudParts.Length];
+        for (int i = 0; i < cloudParts.Length; i++)
+        {
+            SpriteRenderer part = cloudParts[i];
+            if (part == null)
+                continue;
+            eatenParts[i] = new EatenPart
+            {
+                StartPosition = part.transform.position,
+                StartScale = part.transform.localScale,
+                StartColor = part.color
+            };
+        }
+
+        if (nameCanvas != null)
+        {
+            nameCanvasWasEnabled = nameCanvas.enabled;
+            nameCanvas.enabled = false;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (eatenParts == null)
+            return;
+
+        float progress = Mathf.Clamp01((Time.unscaledTime - eatStartedAt) / eatDuration);
+        for (int i = 0; i < cloudParts.Length; i++)
+        {
+            SpriteRenderer part = cloudParts[i];
+            if (part == null)
+                continue;
+
+            EatenPart start = eatenParts[i];
+            Vector3 target = new(eatTarget.x, eatTarget.y, start.StartPosition.z);
+            part.transform.position = Vector3.Lerp(start.StartPosition, target, progress);
+            part.transform.localScale = start.StartScale * (1f - progress);
+            Color color = start.StartColor;
+            color.a *= 1f - progress;
+            part.color = color;
+        }
     }
 
     internal void UpdateFacePosition(Vector2 position)
@@ -159,6 +231,21 @@ public class MP_PlayerCostume : NetworkBehaviour
 
     protected override void OnDespawned(bool asServer)
     {
+        if (eatenParts != null)
+        {
+            for (int i = 0; i < cloudParts.Length; i++)
+            {
+                SpriteRenderer part = cloudParts[i];
+                if (part == null)
+                    continue;
+                part.transform.localPosition = cloudPartRestPositions[i];
+                part.transform.localScale = eatenParts[i].StartScale;
+                part.color = eatenParts[i].StartColor;
+            }
+            eatenParts = null;
+            if (nameCanvas != null)
+                nameCanvas.enabled = nameCanvasWasEnabled;
+        }
         faceOffset = Vector2.zero;
         hasPreviousPosition = false;
         if (face != null)

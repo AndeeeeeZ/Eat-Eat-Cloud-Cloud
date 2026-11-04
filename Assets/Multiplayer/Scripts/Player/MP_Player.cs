@@ -1,9 +1,15 @@
+using System.Collections;
 using UnityEngine;
 using PurrNet;
 
 public class MP_Player : PlayerIdentity<MP_Player>
 {
     [SerializeField] private MP_PlayerStats playerStats;
+    private const float EatAnimationSeconds = 0.35f;
+    private const float EatDespawnDelaySeconds = 0.6f;
+    private readonly SyncVar<Vector2> eatenTarget = new(Vector2.zero);
+    private readonly SyncVar<bool> beingEaten = new(false);
+    private Coroutine pendingDespawn;
 
     [Header("Spawn Protection")]
     [SerializeField, Min(0f)] private float spawnProtectionDuration = 3f;
@@ -15,6 +21,7 @@ public class MP_Player : PlayerIdentity<MP_Player>
     private void Awake()
     {
         spawnProtected.onChanged += HandleProtectionChanged;
+        beingEaten.onChanged += HandleBeingEatenChanged;
         HideProtectionRing();
     }
 
@@ -48,6 +55,7 @@ public class MP_Player : PlayerIdentity<MP_Player>
     {
         base.OnDestroy();
         spawnProtected.onChanged -= HandleProtectionChanged;
+        beingEaten.onChanged -= HandleBeingEatenChanged;
     }
 
     // Server-only lifecycle state. Set before despawning to guard queued collisions
@@ -68,17 +76,34 @@ public class MP_Player : PlayerIdentity<MP_Player>
 
         float experienceToAward = playerStats.TotalExp;
         IsAlive = false;
+        eatenTarget.value = eater.transform.position;
+        beingEaten.value = true;
 
         eaterGrowth.GainExperienceFromEating(experienceToAward);
         // Remove the living cloud immediately; keep its connection record for respawn
         manager.UnregisterPlayer(this);
         Debug.Log($"{eater.Stats.PlayerName} ate {playerStats.PlayerName}", this);
 
-        if (owner.HasValue)
-            manager.NotifyPlayerDeath(owner.Value, eater.Stats.PlayerName);
-
-        Despawn();
+        pendingDespawn = StartCoroutine(DespawnAfterEating(eater.Stats.PlayerName));
         return true;
+    }
+
+    private IEnumerator DespawnAfterEating(string killerName)
+    {
+        yield return new WaitForSecondsRealtime(EatAnimationSeconds);
+        if (isServer && isSpawned && owner.HasValue && MP_PlayerManager.Instance != null)
+            MP_PlayerManager.Instance.NotifyPlayerDeath(owner.Value, killerName);
+        yield return new WaitForSecondsRealtime(EatDespawnDelaySeconds - EatAnimationSeconds);
+        pendingDespawn = null;
+        if (isServer && isSpawned)
+            Despawn();
+    }
+
+    private void HandleBeingEatenChanged(bool eaten)
+    {
+        if (eaten && isClient)
+            GetComponent<MP_PlayerCostume>()?.BeginBeingEaten(eatenTarget.value,
+                EatAnimationSeconds);
     }
 
     protected override void OnSpawned(bool asServer)
@@ -87,6 +112,8 @@ public class MP_Player : PlayerIdentity<MP_Player>
 
         if (asServer)
         {
+            beingEaten.value = false;
+            eatenTarget.value = Vector2.zero;
             protectionEndsAt = Time.timeAsDouble + Mathf.Max(0f, spawnProtectionDuration);
             spawnProtected.value = spawnProtectionDuration > 0f;
 
@@ -102,6 +129,7 @@ public class MP_Player : PlayerIdentity<MP_Player>
         }
 
         HandleProtectionChanged(spawnProtected.value);
+        HandleBeingEatenChanged(beingEaten.value);
 
         if (isOwner)
         {
@@ -118,6 +146,11 @@ public class MP_Player : PlayerIdentity<MP_Player>
 
     protected override void OnDespawned(bool asServer)
     {
+        if (pendingDespawn != null)
+        {
+            StopCoroutine(pendingDespawn);
+            pendingDespawn = null;
+        }
         base.OnDespawned(asServer);
         HideProtectionRing();
 

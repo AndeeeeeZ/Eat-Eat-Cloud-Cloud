@@ -178,8 +178,9 @@ public class MP_FoodSpawner : NetworkBehaviour
     private readonly HashSet<PlayerID> readyPlayers = new();
     private readonly HashSet<int> visibilityCandidates = new();
     private readonly HashSet<int> dirtyChunks = new();
-    private readonly Dictionary<int, (uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn, bool[] eventFood, uint[] retiredIds)> snapshotCache = new();
+    private readonly Dictionary<int, (uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn, bool[] eventFood, uint[] retiredIds, uint[] eatenIds, Vector2[] eaterPositions)> snapshotCache = new();
     private readonly Dictionary<int, HashSet<uint>> retiredIdsByChunk = new();
+    private readonly Dictionary<uint, Vector2> eaterPositionsByFoodId = new();
     private readonly Dictionary<int, uint> receivedChunkVersions = new();
     private readonly List<SpawnRegion> spawnRegions = new();
     private readonly List<List<int>> regionsByFoodCount = new();
@@ -444,6 +445,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             dirtyChunks.Clear();
             snapshotCache.Clear();
             retiredIdsByChunk.Clear();
+            eaterPositionsByFoodId.Clear();
             spawnRegions.Clear();
             regionsByFoodCount.Clear();
             initialRegions.Clear();
@@ -523,6 +525,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         dirtyChunks.Clear();
         snapshotCache.Clear();
         retiredIdsByChunk.Clear();
+        eaterPositionsByFoodId.Clear();
         spawnRegions.Clear();
         regionsByFoodCount.Clear();
         initialRegions.Clear();
@@ -587,7 +590,8 @@ public class MP_FoodSpawner : NetworkBehaviour
         warnedNoSpawnPosition = false;
     }
 
-    private void RemoveFoodRecord(FoodRecord record, bool fadeOut = false)
+    private void RemoveFoodRecord(FoodRecord record, bool fadeOut = false,
+        Vector2? eaterPosition = null)
     {
         foodRecords.Remove(record.Id);
         if (!record.IsEventFood)
@@ -600,7 +604,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         foodRecordIdsByCell[record.CellIndex]?.Remove(record.Id);
         int chunkIndex = GetChunkIndex(record.CellIndex);
         foodIdsByChunk[chunkIndex]?.Remove(record.Id);
-        if (fadeOut)
+        if (fadeOut || eaterPosition.HasValue)
         {
             if (!retiredIdsByChunk.TryGetValue(chunkIndex, out HashSet<uint> retiredIds))
             {
@@ -609,6 +613,8 @@ public class MP_FoodSpawner : NetworkBehaviour
             }
 
             retiredIds.Add(record.Id);
+            if (eaterPosition.HasValue)
+                eaterPositionsByFoodId[record.Id] = eaterPosition.Value;
         }
         MarkChunkDirty(chunkIndex);
         nextVisibilityRefreshAt = 0d;
@@ -671,7 +677,7 @@ public class MP_FoodSpawner : NetworkBehaviour
                     if ((record.HitCenter - nearest).sqrMagnitude > reach * reach)
                         continue;
 
-                    RemoveFoodRecord(record);
+                    RemoveFoodRecord(record, eaterPosition: player.transform.position);
                     if (!record.IsEventFood)
                         QueueReplacement(record);
                     growth.GainExperience(record.Experience);
@@ -770,6 +776,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         dirtyChunks.Clear();
         retiredIdsByChunk.Clear();
+        eaterPositionsByFoodId.Clear();
     }
 
     private void GatherChunksNear(Vector2 position, Vector2 extents, HashSet<int> results)
@@ -799,7 +806,7 @@ public class MP_FoodSpawner : NetworkBehaviour
     private void SendFoodChunk(PlayerID player, int chunkIndex)
     {
         if (!snapshotCache.TryGetValue(chunkIndex,
-                out (uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn, bool[] eventFood, uint[] retiredIds) snapshot))
+                out (uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn, bool[] eventFood, uint[] retiredIds, uint[] eatenIds, Vector2[] eaterPositions) snapshot))
         {
             List<uint> foodIds = foodIdsByChunk[chunkIndex];
             int count = foodIds?.Count ?? 0;
@@ -821,26 +828,38 @@ public class MP_FoodSpawner : NetworkBehaviour
             uint[] retiredIds = retiredIdsByChunk.TryGetValue(chunkIndex,
                 out HashSet<uint> retired) ? new uint[retired.Count] : Array.Empty<uint>();
             retired?.CopyTo(retiredIds);
-            snapshot = (ids, positions, sizes, fadeIn, eventFood, retiredIds);
+            List<uint> eatenIds = new();
+            List<Vector2> eaterPositions = new();
+            foreach (uint retiredId in retiredIds)
+            {
+                if (!eaterPositionsByFoodId.TryGetValue(retiredId, out Vector2 eaterPosition))
+                    continue;
+                eatenIds.Add(retiredId);
+                eaterPositions.Add(eaterPosition);
+            }
+            snapshot = (ids, positions, sizes, fadeIn, eventFood, retiredIds,
+                eatenIds.ToArray(), eaterPositions.ToArray());
             snapshotCache.Add(chunkIndex, snapshot);
         }
 
         ReceiveFoodChunk(player, chunkIndex, chunkVersions[chunkIndex],
             snapshot.ids, snapshot.positions, snapshot.sizes, snapshot.fadeIn,
-            snapshot.eventFood, eventFoodColor, snapshot.retiredIds);
+            snapshot.eventFood, eventFoodColor, snapshot.retiredIds,
+            snapshot.eatenIds, snapshot.eaterPositions);
     }
 
     [TargetRpc(runLocally: true)]
     private void ReceiveFoodChunk(PlayerID target, int chunkIndex, uint version,
         uint[] ids, Vector2[] positions, float[] sizes, bool[] fadeIn,
-        bool[] eventFood, Color specialColor, uint[] retiredIds)
+        bool[] eventFood, Color specialColor, uint[] retiredIds,
+        uint[] eatenIds, Vector2[] eaterPositions)
     {
         if (clientVisuals == null ||
             (receivedChunkVersions.TryGetValue(chunkIndex, out uint previous) && version < previous))
             return;
 
         clientVisuals.ApplyChunk(chunkIndex, ids, positions, sizes, fadeIn,
-            eventFood, specialColor, retiredIds);
+            eventFood, specialColor, retiredIds, eatenIds, eaterPositions);
         receivedChunkVersions[chunkIndex] = version;
     }
 

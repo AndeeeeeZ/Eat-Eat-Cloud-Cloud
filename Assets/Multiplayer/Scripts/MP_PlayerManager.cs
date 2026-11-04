@@ -1,5 +1,6 @@
 using PurrNet;
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System;
 using PurrNet.Packing;
@@ -420,6 +421,12 @@ public class MP_PlayerManager : NetworkBehaviour
 
         MP_ResultsSceneData.Set(winnerName, podium);
         localPlayerData?.RememberSelection();
+        StartCoroutine(LoadResultsAfterEating(sceneName));
+    }
+
+    private IEnumerator LoadResultsAfterEating(string sceneName)
+    {
+        yield return new WaitForSecondsRealtime(0.6f);
         NetworkManager manager = NetworkManager.main;
         if (manager != null && manager.isClient)
             manager.StopClient();

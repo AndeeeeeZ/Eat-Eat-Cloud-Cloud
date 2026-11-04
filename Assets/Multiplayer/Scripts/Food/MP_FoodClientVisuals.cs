@@ -29,6 +29,10 @@ internal class MP_FoodClientVisuals
         public float FadeStartAlpha;
         public bool IsFading;
         public bool IsFadingOut;
+        public bool IsBeingEaten;
+        public Vector3 EatStartPosition;
+        public Vector3 EatTargetPosition;
+        public Vector3 EatStartScale;
         public Vector3 GrowthStartPosition;
         public Vector3 GrowthTargetPosition;
         public Vector3 GrowthStartScale;
@@ -79,10 +83,12 @@ internal class MP_FoodClientVisuals
     }
 
     public void ApplyChunk(int chunkIndex, uint[] ids, Vector2[] positions,
-        float[] sizes, bool[] fadeIn, bool[] eventFood, Color eventColor, uint[] retiredIds)
+        float[] sizes, bool[] fadeIn, bool[] eventFood, Color eventColor,
+        uint[] retiredIds, uint[] eatenIds, Vector2[] eaterPositions)
     {
         if (ids == null || positions == null || sizes == null || fadeIn == null ||
-            eventFood == null || retiredIds == null ||
+            eventFood == null || retiredIds == null || eatenIds == null ||
+            eaterPositions == null || eatenIds.Length != eaterPositions.Length ||
             ids.Length != positions.Length || ids.Length != sizes.Length ||
             ids.Length != fadeIn.Length || ids.Length != eventFood.Length)
             return;
@@ -129,8 +135,11 @@ internal class MP_FoodClientVisuals
             if (active.TryGetValue(id, out Visual visual))
             {
                 active.Remove(id);
-                if (this.retiredIds.Contains(id))
-                    FadeOut(visual);
+                int eatenIndex = System.Array.IndexOf(eatenIds, id);
+                if (eatenIndex >= 0)
+                    FadeOut(visual, eaterPositions[eatenIndex]);
+                else if (this.retiredIds.Contains(id))
+                    FadeOut(visual, null);
                 else
                     Release(visual);
             }
@@ -184,9 +193,16 @@ internal class MP_FoodClientVisuals
         {
             Visual visual = fading[i];
             visual.Elapsed += deltaTime;
-            float duration = visual.IsFadingOut ? Mathf.Max(0.1f, fadeInDuration) : fadeInDuration;
+            float duration = visual.IsBeingEaten ? 0.35f :
+                visual.IsFadingOut ? Mathf.Max(0.1f, fadeInDuration) : fadeInDuration;
             float progress = Mathf.Clamp01(visual.Elapsed / duration);
             SetAlpha(visual, visual.IsFadingOut ? visual.FadeStartAlpha * (1f - progress) : progress);
+            if (visual.IsBeingEaten)
+            {
+                visual.GameObject.transform.position = Vector3.Lerp(
+                    visual.EatStartPosition, visual.EatTargetPosition, progress);
+                visual.GameObject.transform.localScale = visual.EatStartScale * (1f - progress);
+            }
             if (progress < 1f)
                 continue;
 
@@ -227,6 +243,7 @@ internal class MP_FoodClientVisuals
         bool animate = fadeIn && fadeInDuration > 0f;
         SetAlpha(visual, animate ? 0f : 1f);
         visual.IsFadingOut = false;
+        visual.IsBeingEaten = false;
         visual.IsGrowing = false;
         if (animate)
         {
@@ -305,16 +322,29 @@ internal class MP_FoodClientVisuals
         growing.Add(visual);
     }
 
-    private void FadeOut(Visual visual)
+    private void FadeOut(Visual visual, Vector2? eaterPosition)
     {
         if (visual.IsFading)
             fading.Remove(visual);
+        if (visual.IsGrowing)
+        {
+            visual.IsGrowing = false;
+            growing.Remove(visual);
+        }
 
         visual.Elapsed = 0f;
         visual.FadeStartAlpha = visual.BaseColor.a > 0f ?
             visual.Renderer.color.a / visual.BaseColor.a : 1f;
         visual.IsFading = true;
         visual.IsFadingOut = true;
+        visual.IsBeingEaten = eaterPosition.HasValue;
+        if (eaterPosition.HasValue)
+        {
+            visual.EatStartPosition = visual.GameObject.transform.position;
+            visual.EatTargetPosition = new Vector3(eaterPosition.Value.x,
+                eaterPosition.Value.y, visual.EatStartPosition.z);
+            visual.EatStartScale = visual.GameObject.transform.localScale;
+        }
         fading.Add(visual);
     }
 
@@ -333,6 +363,7 @@ internal class MP_FoodClientVisuals
         }
 
         visual.IsFadingOut = false;
+        visual.IsBeingEaten = false;
         visual.GameObject.SetActive(false);
         if (pool.Count < MaxPooledVisuals)
             pool.Push(visual);
