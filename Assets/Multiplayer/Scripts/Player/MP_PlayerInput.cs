@@ -83,6 +83,9 @@ public class MP_PlayerInput : NetworkBehaviour
         if (!IsSpawned(false) || !isOwner || input == null || !input.Multiplayer.enabled)
             return;
 
+        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            playerMovement?.RequestSpeedBoost();
+
         MovementUpdate();
     }
 

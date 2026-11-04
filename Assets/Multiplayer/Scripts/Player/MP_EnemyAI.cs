@@ -18,6 +18,7 @@ public class MP_EnemyAI : NetworkBehaviour
         public float turnSpeedDegreesPerSecond;
         public float chaseDurationSeconds;
         public float targetSwitchPauseSeconds;
+        [InspectorName("Post-Eat Chase Delay Seconds")]
         public float postEatPauseSeconds;
     }
 
@@ -31,7 +32,8 @@ public class MP_EnemyAI : NetworkBehaviour
     [SerializeField, Min(1f)] private float turnSpeedDegreesPerSecond = 360f;
     [SerializeField, Min(0.1f)] private float chaseDurationSeconds = 3f;
     [SerializeField, Min(0f)] private float targetSwitchPauseSeconds = 1f;
-    [SerializeField, Min(0f)] private float postEatPauseSeconds = 3f;
+    [SerializeField, Min(0f), InspectorName("Post-Eat Chase Delay Seconds")]
+    private float postEatPauseSeconds = 3f;
     [Header("Presets (nonpositive values use defaults)")]
     [SerializeField] private EnemyPreset[] presets;
 
@@ -39,19 +41,17 @@ public class MP_EnemyAI : NetworkBehaviour
     private MP_Player player;
     private MP_PlayerStats stats;
     private MP_PlayerGrowth growth;
+    private MP_PlayerMovement movement;
     private MP_Player target;
     private MP_Player recentlyChasedTarget;
     private MP_Player fleeWallTarget;
     private Vector2 foodDestination;
     private Vector2 currentDirection;
-    private Vector2 wanderDirection;
     private Vector2 fleeWallDirection;
     private double nextDecisionAt;
     private double chaseEndsAt;
     private double recentlyChasedTargetAvailableAt;
     private double nextHuntAt;
-    private double nextFoodSearchAt;
-    private double nextWanderTurnAt;
     private bool fleeing;
     private bool hasFoodDestination;
     private bool startingExperienceApplied;
@@ -65,6 +65,7 @@ public class MP_EnemyAI : NetworkBehaviour
         player = GetComponent<MP_Player>();
         stats = GetComponent<MP_PlayerStats>();
         growth = GetComponent<MP_PlayerGrowth>();
+        movement = GetComponent<MP_PlayerMovement>();
     }
 
     protected override void OnSpawned(bool asServer)
@@ -80,13 +81,10 @@ public class MP_EnemyAI : NetworkBehaviour
         nextDecisionAt = 0d;
         foodDestination = default;
         currentDirection = Vector2.zero;
-        wanderDirection = Vector2.zero;
         fleeWallDirection = Vector2.zero;
         chaseEndsAt = 0d;
         recentlyChasedTargetAvailableAt = 0d;
         nextHuntAt = 0d;
-        nextFoodSearchAt = 0d;
-        nextWanderTurnAt = 0d;
         fleeing = false;
         hasFoodDestination = false;
         startingExperienceApplied = false;
@@ -137,11 +135,8 @@ public class MP_EnemyAI : NetworkBehaviour
             fleeWallTarget = null;
             hasFoodDestination = false;
             currentDirection = Vector2.zero;
-            wanderDirection = Vector2.zero;
             fleeWallDirection = Vector2.zero;
             nextHuntAt = 0d;
-            nextFoodSearchAt = 0d;
-            nextWanderTurnAt = 0d;
         }
 
         base.OnDespawned(asServer);
@@ -285,6 +280,8 @@ public class MP_EnemyAI : NetworkBehaviour
             if (fleeing)
             {
                 Vector2 escapeDirection = GetFleeDirection(offset);
+                if (escapeDirection.sqrMagnitude > 0.0001f)
+                    movement.TryActivateSpeedBoostForAI();
                 if (fleeWallDirection.sqrMagnitude > 0f)
                 {
                     currentDirection = escapeDirection;
@@ -296,19 +293,21 @@ public class MP_EnemyAI : NetworkBehaviour
 
             fleeWallTarget = null;
             fleeWallDirection = Vector2.zero;
+            if (offset.sqrMagnitude > 0.0001f)
+                movement.TryActivateSpeedBoostForAI();
             return SmoothDirection(offset.normalized);
         }
 
         fleeWallTarget = null;
         fleeWallDirection = Vector2.zero;
-        if (now < nextFoodSearchAt)
-            return GetWanderMovementDirection(GetWanderDirection(now));
-
         if (hasFoodDestination)
         {
             Vector2 toFood = foodDestination - (Vector2)transform.position;
             if (toFood.sqrMagnitude > 0.0001f)
+            {
+                movement.TryActivateSpeedBoostForAI();
                 return SmoothDirection(toFood.normalized);
+            }
         }
 
         return GetWanderMovementDirection(currentDirection);
@@ -322,26 +321,12 @@ public class MP_EnemyAI : NetworkBehaviour
         double pauseEndsAt = Time.timeAsDouble +
             Mathf.Max(0f, activePreset.postEatPauseSeconds);
         nextHuntAt = System.Math.Max(nextHuntAt, pauseEndsAt);
-        nextFoodSearchAt = System.Math.Max(nextFoodSearchAt, pauseEndsAt);
         target = null;
         fleeWallTarget = null;
         fleeWallDirection = Vector2.zero;
         fleeing = false;
         hasFoodDestination = false;
-        wanderDirection = Vector2.zero;
-        nextWanderTurnAt = 0d;
         nextDecisionAt = 0d;
-    }
-
-    private Vector2 GetWanderDirection(double now)
-    {
-        if (now >= nextWanderTurnAt)
-        {
-            wanderDirection = Random.insideUnitCircle.normalized;
-            nextWanderTurnAt = now + Random.Range(0.75f, 1.5f);
-        }
-
-        return wanderDirection;
     }
 
     private Vector2 GetWanderMovementDirection(Vector2 direction)
@@ -552,7 +537,7 @@ public class MP_EnemyAI : NetworkBehaviour
                 chaseEndsAt = now + Mathf.Max(0.1f, activePreset.chaseDurationSeconds);
         }
 
-        if (target == null && foodSpawner != null && now >= nextFoodSearchAt)
+        if (target == null && foodSpawner != null)
             hasFoodDestination = foodSpawner.TryGetNearestFoodInView((Vector2)transform.position,
                 viewExtents, out foodDestination);
     }

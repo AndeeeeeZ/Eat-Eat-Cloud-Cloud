@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet;
 using UnityEngine;
@@ -8,6 +9,11 @@ using UnityEngine;
 public class MP_PlayerMovement : NetworkBehaviour
 {
     [SerializeField] private FloatValue baseMoveSpeed;
+    [Header("Speed Boost")]
+    [SerializeField, Min(1f)] private float boostSpeedMultiplier = 2f;
+    [SerializeField, Min(0.01f)] private float boostDurationSeconds = 2f;
+    [SerializeField, Min(0f)] private float boostCooldownSeconds = 5f;
+    private readonly SyncVar<bool> boostActive = new(false);
     private MP_PlayerInput playerInput;
     private MP_EnemyAI enemyAI;
     private MP_Player player;
@@ -26,6 +32,21 @@ public class MP_PlayerMovement : NetworkBehaviour
     private double nextPingLookupAt;
     private double lastInputAt;
     private double lastServerMovedAt;
+    private double boostEndsAt;
+    private double nextBoostAt;
+    private double boostVisualEndsAt;
+    private double cooldownVisualEndsAt;
+
+    public bool IsSpeedBoostActive => boostActive.value;
+    public float SpeedBoostDuration => Mathf.Max(0.01f, boostDurationSeconds);
+    public float SpeedBoostCooldown => Mathf.Max(0f, boostCooldownSeconds);
+    public float SpeedBoostRemaining => boostActive.value
+        ? (float)System.Math.Max(0d, boostVisualEndsAt - Time.realtimeSinceStartupAsDouble)
+        : 0f;
+    public float SpeedBoostCooldownRemaining => !boostActive.value
+        ? (float)System.Math.Max(0d, cooldownVisualEndsAt - Time.realtimeSinceStartupAsDouble)
+        : 0f;
+    public event Action OnSpeedBoostCooldownAttempt;
 
     public Transform PresentationTarget
     {
@@ -59,13 +80,90 @@ public class MP_PlayerMovement : NetworkBehaviour
         CacheVisualChildren();
     }
 
-    private void FixedUpdate()
+    protected override void OnSpawned(bool asServer)
     {
-        if (!isSpawned || (MP_PlayerManager.Instance != null &&
-            MP_PlayerManager.Instance.RoundEnded))
+        base.OnSpawned(asServer);
+        boostActive.onChanged -= HandleBoostChanged;
+        boostActive.onChanged += HandleBoostChanged;
+        if (asServer)
+        {
+            boostEndsAt = 0d;
+            nextBoostAt = 0d;
+            boostActive.value = false;
+        }
+        else
+        {
+            boostVisualEndsAt = boostActive.value
+                ? Time.realtimeSinceStartupAsDouble + SpeedBoostDuration : 0d;
+            cooldownVisualEndsAt = 0d;
+        }
+    }
+
+    public void RequestSpeedBoost()
+    {
+        if (!isSpawned || !isOwner || enemyAI != null ||
+            (MP_PlayerManager.Instance != null && MP_PlayerManager.Instance.RoundEnded))
             return;
 
-        if (!isServer)
+        if (SpeedBoostCooldownRemaining > 0f)
+        {
+            OnSpeedBoostCooldownAttempt?.Invoke();
+            return;
+        }
+
+        ActivateSpeedBoostOnServer();
+    }
+
+    [ServerRpc]
+    private void ActivateSpeedBoostOnServer()
+    {
+        if (enemyAI == null)
+            TryActivateSpeedBoostOnServer();
+    }
+
+    public bool TryActivateSpeedBoostForAI()
+    {
+        return enemyAI != null && TryActivateSpeedBoostOnServer();
+    }
+
+    private bool TryActivateSpeedBoostOnServer()
+    {
+        if (!isServer || !isSpawned || player == null || !player.IsAlive ||
+            (MP_PlayerManager.Instance != null && MP_PlayerManager.Instance.RoundEnded))
+            return false;
+
+        double now = Time.realtimeSinceStartupAsDouble;
+        if (boostActive.value || now < nextBoostAt)
+            return false;
+
+        boostEndsAt = now + SpeedBoostDuration;
+        nextBoostAt = boostEndsAt + SpeedBoostCooldown;
+        boostActive.value = true;
+        return true;
+    }
+
+    private void HandleBoostChanged(bool isActive)
+    {
+        if (!isSpawned || !isOwner)
+            return;
+
+        double now = Time.realtimeSinceStartupAsDouble;
+        boostVisualEndsAt = isActive ? now + SpeedBoostDuration : 0d;
+        cooldownVisualEndsAt = isActive ? 0d : now + SpeedBoostCooldown;
+    }
+
+    private void FixedUpdate()
+    {
+        if (!isSpawned)
+            return;
+
+        bool roundEnded = MP_PlayerManager.Instance != null &&
+            MP_PlayerManager.Instance.RoundEnded;
+        if (isServer && boostActive.value &&
+            (roundEnded || Time.realtimeSinceStartupAsDouble >= boostEndsAt))
+            boostActive.value = false;
+
+        if (!isServer || roundEnded)
             return;
 
         Vector2 previousPosition = transform.position;
@@ -76,6 +174,8 @@ public class MP_PlayerMovement : NetworkBehaviour
         MP_CycleTimer timer = MP_CycleTimer.Instance;
         float speedMultiplier = timer != null ? timer.SpeedMultiplier : 1f;
         speedMultiplier *= GetSizeSpeedMultiplier(timer);
+        if (boostActive.value)
+            speedMultiplier *= Mathf.Max(1f, boostSpeedMultiplier);
         if (enemyAI != null)
             speedMultiplier *= enemyAI.MovementSpeedMultiplier;
         Vector3 nextPosition = transform.position +
@@ -133,6 +233,8 @@ public class MP_PlayerMovement : NetworkBehaviour
         float speed = baseMoveSpeed != null
             ? baseMoveSpeed.Value * speedMultiplier * GetSizeSpeedMultiplier(MP_CycleTimer.Instance)
             : 0f;
+        if (boostActive.value)
+            speed *= Mathf.Max(1f, boostSpeedMultiplier);
         bool roundEnded = MP_PlayerManager.Instance != null &&
             MP_PlayerManager.Instance.RoundEnded;
         Vector2 direction = !roundEnded && playerInput != null
@@ -174,7 +276,8 @@ public class MP_PlayerMovement : NetworkBehaviour
         float baseSpeed = baseMoveSpeed != null ? baseMoveSpeed.Value : 0f;
         float cycleSpeed = MP_CycleTimer.Instance != null
             ? MP_CycleTimer.Instance.SpeedMultiplier : 1f;
-        float maximumSpeed = Mathf.Max(1f, baseSpeed * cycleSpeed * 1.25f);
+        float maximumSpeed = Mathf.Max(1f,
+            baseSpeed * cycleSpeed * Mathf.Max(1f, boostSpeedMultiplier) * 1.25f);
         Vector2 displacement = serverPosition - previousServerPosition;
         if (displacement.magnitude > Mathf.Max(2f, maximumSpeed * deltaTime * 4f))
         {
@@ -237,8 +340,16 @@ public class MP_PlayerMovement : NetworkBehaviour
 
     protected override void OnDespawned(bool asServer)
     {
-        if (!asServer)
+        if (asServer)
         {
+            boostActive.value = false;
+            boostEndsAt = 0d;
+            nextBoostAt = 0d;
+        }
+        else
+        {
+            boostVisualEndsAt = 0d;
+            cooldownVisualEndsAt = 0d;
             presentationInitialized = false;
             presentationPosition = Vector2.zero;
             previousServerPosition = Vector2.zero;
@@ -253,5 +364,11 @@ public class MP_PlayerMovement : NetworkBehaviour
         }
 
         base.OnDespawned(asServer);
+    }
+
+    protected override void OnDestroy()
+    {
+        boostActive.onChanged -= HandleBoostChanged;
+        base.OnDestroy();
     }
 }
