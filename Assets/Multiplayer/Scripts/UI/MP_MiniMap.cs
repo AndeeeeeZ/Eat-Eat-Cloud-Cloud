@@ -8,10 +8,21 @@ public class MP_MiniMap : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Image playerIndicator;
     [SerializeField] private UnityEngine.UI.Image eventZoneTemplate;
     [SerializeField, Min(0f)] private float minimumEventZoneDiameter = 10f;
+    [SerializeField, Min(0f)] private float eventZoneFadeDuration = 0.4f;
 
     private const float EventZoneBreathPeriodSeconds = 1.2f;
 
-    private readonly List<UnityEngine.UI.Image> eventZoneIndicators = new();
+    private sealed class EventZoneIndicator
+    {
+        public UnityEngine.UI.Image Image;
+        public Vector2 Center;
+        public bool Seen;
+        public bool IsFading;
+        public float FadeStartTime;
+        public float FadeStartAlpha;
+    }
+
+    private readonly List<EventZoneIndicator> eventZoneIndicators = new();
     private MP_Player displayedPlayer;
     private MP_PlayerMovement displayedMovement;
     private MP_PlayerCostume displayedCostume;
@@ -103,22 +114,48 @@ public class MP_MiniMap : MonoBehaviour
             boundary != null && boundary.Size.x > 0f && boundary.Size.y > 0f &&
             zones != null ? zones.Count : 0;
 
+        foreach (EventZoneIndicator marker in eventZoneIndicators)
+            marker.Seen = false;
+
         for (int i = 0; i < count; i++)
         {
-            if (i >= eventZoneIndicators.Count)
+            MP_FoodEventZone zone = zones[i];
+            EventZoneIndicator marker = null;
+            foreach (EventZoneIndicator candidate in eventZoneIndicators)
             {
-                UnityEngine.UI.Image marker = Instantiate(eventZoneTemplate, mapImage.rectTransform);
-                marker.name = "Event Zone Indicator";
-                marker.raycastTarget = false;
-                marker.transform.SetAsFirstSibling();
-                marker.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-                marker.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                marker.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                if (!candidate.Seen && candidate.Image.gameObject.activeSelf &&
+                    candidate.Center == zone.Center)
+                {
+                    marker = candidate;
+                    break;
+                }
+            }
+
+            if (marker == null)
+                foreach (EventZoneIndicator candidate in eventZoneIndicators)
+                    if (!candidate.Seen && !candidate.Image.gameObject.activeSelf)
+                    {
+                        marker = candidate;
+                        break;
+                    }
+
+            if (marker == null)
+            {
+                UnityEngine.UI.Image image = Instantiate(eventZoneTemplate, mapImage.rectTransform);
+                image.name = "Event Zone Indicator";
+                image.raycastTarget = false;
+                image.transform.SetAsFirstSibling();
+                image.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                image.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                image.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                marker = new EventZoneIndicator { Image = image };
                 eventZoneIndicators.Add(marker);
             }
 
-            UnityEngine.UI.Image indicator = eventZoneIndicators[i];
-            MP_FoodEventZone zone = zones[i];
+            marker.Center = zone.Center;
+            marker.Seen = true;
+            marker.IsFading = false;
+            UnityEngine.UI.Image indicator = marker.Image;
             RectTransform mapRect = mapImage.rectTransform;
             RectTransform markerRect = indicator.rectTransform;
             Vector2 offset = zone.Center - boundary.Center;
@@ -152,18 +189,43 @@ public class MP_MiniMap : MonoBehaviour
                 indicator.gameObject.SetActive(true);
         }
 
-        for (int i = count; i < eventZoneIndicators.Count; i++)
-            if (eventZoneIndicators[i].gameObject.activeSelf)
-                eventZoneIndicators[i].gameObject.SetActive(false);
+        foreach (EventZoneIndicator marker in eventZoneIndicators)
+        {
+            UnityEngine.UI.Image indicator = marker.Image;
+            if (marker.Seen || !indicator.gameObject.activeSelf)
+                continue;
+
+            if (!marker.IsFading)
+            {
+                marker.IsFading = true;
+                marker.FadeStartTime = Time.unscaledTime;
+                marker.FadeStartAlpha = indicator.color.a;
+            }
+
+            float progress = eventZoneFadeDuration > 0f
+                ? (Time.unscaledTime - marker.FadeStartTime) / eventZoneFadeDuration : 1f;
+            if (progress >= 1f)
+            {
+                indicator.gameObject.SetActive(false);
+                continue;
+            }
+
+            Color color = indicator.color;
+            color.a = marker.FadeStartAlpha * (1f - progress);
+            indicator.color = color;
+        }
     }
 
     private void OnDisable()
     {
         if (playerIndicator != null)
             playerIndicator.enabled = false;
-        foreach (UnityEngine.UI.Image indicator in eventZoneIndicators)
-            if (indicator != null)
-                indicator.gameObject.SetActive(false);
+        foreach (EventZoneIndicator marker in eventZoneIndicators)
+        {
+            marker.IsFading = false;
+            if (marker.Image != null)
+                marker.Image.gameObject.SetActive(false);
+        }
         displayedPlayer = null;
         displayedMovement = null;
         displayedCostume = null;

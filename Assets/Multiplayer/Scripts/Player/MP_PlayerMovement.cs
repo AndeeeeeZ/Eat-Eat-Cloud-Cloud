@@ -18,6 +18,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     private MP_EnemyAI enemyAI;
     private MP_Player player;
     private MP_PlayerGrowth playerGrowth;
+    private MP_PlayerCostume playerCostume;
     private MP_PlayerEating playerEating;
     private CircleCollider2D bodyCollider;
     private MP_Ping ping;
@@ -68,6 +69,21 @@ public class MP_PlayerMovement : NetworkBehaviour
 
     public Vector2 PresentationPosition => presentationInitialized
         ? presentationPosition : (Vector2)transform.position;
+    public float CurrentFullMoveSpeed
+    {
+        get
+        {
+            MP_CycleTimer timer = MP_CycleTimer.Instance;
+            float speed = baseMoveSpeed != null ? baseMoveSpeed.Value : 0f;
+            speed *= (timer != null ? timer.SpeedMultiplier : 1f) *
+                GetSizeSpeedMultiplier(timer);
+            if (boostActive.value)
+                speed *= Mathf.Max(1f, boostSpeedMultiplier);
+            if (enemyAI != null)
+                speed *= enemyAI.MovementSpeedMultiplier;
+            return speed;
+        }
+    }
 
     private void Awake()
     {
@@ -75,6 +91,7 @@ public class MP_PlayerMovement : NetworkBehaviour
         enemyAI = GetComponent<MP_EnemyAI>();
         player = GetComponent<MP_Player>();
         playerGrowth = GetComponent<MP_PlayerGrowth>();
+        playerCostume = GetComponent<MP_PlayerCostume>();
         playerEating = GetComponentInChildren<MP_PlayerEating>();
         bodyCollider = GetComponent<CircleCollider2D>();
         CacheVisualChildren();
@@ -171,15 +188,8 @@ public class MP_PlayerMovement : NetworkBehaviour
             ? enemyAI.GetMovementDirection()
             : playerInput.MovementInput;
 
-        MP_CycleTimer timer = MP_CycleTimer.Instance;
-        float speedMultiplier = timer != null ? timer.SpeedMultiplier : 1f;
-        speedMultiplier *= GetSizeSpeedMultiplier(timer);
-        if (boostActive.value)
-            speedMultiplier *= Mathf.Max(1f, boostSpeedMultiplier);
-        if (enemyAI != null)
-            speedMultiplier *= enemyAI.MovementSpeedMultiplier;
         Vector3 nextPosition = transform.position +
-            (Vector3)(direction * baseMoveSpeed.Value * speedMultiplier * Time.fixedDeltaTime);
+            (Vector3)(direction * CurrentFullMoveSpeed * Time.fixedDeltaTime);
         MP_GameBoundary boundary = MP_GameBoundary.Instance;
         if (boundary != null)
             nextPosition = boundary.ClampPosition(nextPosition);
@@ -196,10 +206,17 @@ public class MP_PlayerMovement : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (!isSpawned || !isClient || isServer)
+        if (!isSpawned || !isClient)
             return;
 
         Vector2 serverPosition = transform.position;
+        if (isServer)
+        {
+            if (playerCostume != null)
+                playerCostume.UpdateFacePosition(serverPosition);
+            return;
+        }
+
         if (!presentationInitialized)
         {
             presentationPosition = serverPosition;
@@ -220,6 +237,10 @@ public class MP_PlayerMovement : NetworkBehaviour
         for (int i = 0; i < visualChildren.Length; i++)
             visualChildren[i].localPosition = visualLocalPositions[i] + localOffset;
 
+        // Apply facial movement after smoothing has positioned every visual child
+        if (playerCostume != null)
+            playerCostume.UpdateFacePosition(presentationPosition);
+
         if (presentationTarget != null)
             presentationTarget.position = transform.position + worldOffset;
 
@@ -228,13 +249,7 @@ public class MP_PlayerMovement : NetworkBehaviour
 
     private void UpdateOwnerPresentation(Vector2 serverPosition)
     {
-        float speedMultiplier = MP_CycleTimer.Instance != null
-            ? MP_CycleTimer.Instance.SpeedMultiplier : 1f;
-        float speed = baseMoveSpeed != null
-            ? baseMoveSpeed.Value * speedMultiplier * GetSizeSpeedMultiplier(MP_CycleTimer.Instance)
-            : 0f;
-        if (boostActive.value)
-            speed *= Mathf.Max(1f, boostSpeedMultiplier);
+        float speed = CurrentFullMoveSpeed;
         bool roundEnded = MP_PlayerManager.Instance != null &&
             MP_PlayerManager.Instance.RoundEnded;
         Vector2 direction = !roundEnded && playerInput != null
@@ -326,7 +341,8 @@ public class MP_PlayerMovement : NetworkBehaviour
         for (int i = 0; i < transform.childCount; i++)
         {
             Transform child = transform.GetChild(i);
-            if (child.GetComponent<Collider2D>() != null ||
+            if ((playerCostume != null && child == playerCostume.FaceTransform) ||
+                child.GetComponent<Collider2D>() != null ||
                 (child.GetComponent<Renderer>() == null && child.GetComponent<Canvas>() == null))
                 continue;
 

@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class MP_CostumePicker : MonoBehaviour
 {
@@ -10,11 +11,22 @@ public class MP_CostumePicker : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Image cloudBase;
     [SerializeField] private UnityEngine.UI.Image bottom, rightSide, leftSide, face;
     [SerializeField] private UnityEngine.UI.Image ring;
+    [SerializeField, Min(0f)] private float faceOffsetDistance = 8f;
+    [SerializeField, Min(0f)] private float faceFollowSpeed = 12f;
 
     [Header("Index Labels")]
     [SerializeField] private TextMeshProUGUI cloudBaseIndex;
     [SerializeField] private TextMeshProUGUI bottomIndex, rightIndex, leftIndex, faceIndex;
     [SerializeField] private TextMeshProUGUI baseColorIndex, ringColorIndex;
+
+    private Vector2 faceRestPosition;
+    private Vector2 faceOffset;
+
+    private void Awake()
+    {
+        if (face != null)
+            faceRestPosition = face.rectTransform.anchoredPosition;
+    }
 
     private void Start()
     {
@@ -24,12 +36,55 @@ public class MP_CostumePicker : MonoBehaviour
 
     private void Update()
     {
+        UpdateFacePosition();
+
         if (catalog == null || ring == null || !ring.enabled || ring.sprite == null)
             return;
 
         ring.rectTransform.Rotate(0f, 0f, catalog.RingSpinSpeed * Time.unscaledDeltaTime);
         ring.color = CostumeRingAnimation.WithBreathingAlpha(
             ring.color, Time.unscaledTime, catalog);
+    }
+
+    private void UpdateFacePosition()
+    {
+        if (face == null)
+            return;
+
+        Vector2 direction = Vector2.zero;
+        float offsetAmount = 0f;
+        if (cloudBase != null && Mouse.current != null)
+        {
+            Canvas canvas = face.canvas;
+            Camera canvasCamera = null;
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                canvasCamera = canvas.worldCamera != null ? canvas.worldCamera : Camera.main;
+            RectTransform cloudRect = cloudBase.rectTransform;
+            Rect rect = cloudRect.rect;
+            Vector2 center = RectTransformUtility.WorldToScreenPoint(
+                canvasCamera, cloudRect.TransformPoint(
+                    new Vector3(rect.center.x, rect.center.y)));
+            Vector2 rightEdge = RectTransformUtility.WorldToScreenPoint(
+                canvasCamera, cloudRect.TransformPoint(new Vector3(rect.xMax, rect.center.y)));
+            Vector2 topEdge = RectTransformUtility.WorldToScreenPoint(
+                canvasCamera, cloudRect.TransformPoint(new Vector3(rect.center.x, rect.yMax)));
+            direction = Mouse.current.position.ReadValue() - center;
+            float cloudRadius = Mathf.Max(1f, Mathf.Min(
+                (rightEdge - center).magnitude, (topEdge - center).magnitude));
+            offsetAmount = Mathf.Clamp01(direction.magnitude / cloudRadius);
+        }
+
+        Vector2 targetOffset = direction.normalized * (faceOffsetDistance * offsetAmount);
+        faceOffset = Vector2.Lerp(faceOffset, targetOffset,
+            1f - Mathf.Exp(-faceFollowSpeed * Time.unscaledDeltaTime));
+        face.rectTransform.anchoredPosition = faceRestPosition + faceOffset;
+    }
+
+    private void OnDisable()
+    {
+        faceOffset = Vector2.zero;
+        if (face != null)
+            face.rectTransform.anchoredPosition = faceRestPosition;
     }
 
     public void CycleCloudBase(int diff)

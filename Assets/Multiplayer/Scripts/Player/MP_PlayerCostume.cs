@@ -8,10 +8,23 @@ public class MP_PlayerCostume : NetworkBehaviour
     [SerializeField] private SpriteRenderer cloudBase, bottom, rightSide, leftSide, face;
     [SerializeField] private SpriteRenderer ring;
 
+    [Header("Face Movement")]
+    [SerializeField, Min(0f)] private float faceOffsetDistance = 0.35f;
+    [SerializeField, Min(0f)] private float faceFollowSpeed = 12f;
+
+    private MP_PlayerMovement movement;
+    private MP_PlayerInput playerInput;
+    private MP_EnemyAI enemyAI;
+    private Vector3 faceRestPosition;
+    private Vector2 faceOffset;
+    private Vector2 previousPosition;
+    private bool hasPreviousPosition;
+
     private readonly SyncVar<MP_CostumeIndices> indices = new(default);
     public MP_CostumeIndices CurrentIndices => indices.value;
     public Sprite CloudBaseSprite => cloudBase != null ? cloudBase.sprite : null;
     public Color CloudBaseColor => cloudBase != null ? cloudBase.color : Color.white;
+    internal Transform FaceTransform => face != null ? face.transform : null;
 
     public bool IsValid(MP_CostumeIndices selection)
     {
@@ -64,6 +77,12 @@ public class MP_PlayerCostume : NetworkBehaviour
 
     private void Awake()
     {
+        movement = GetComponent<MP_PlayerMovement>();
+        playerInput = GetComponent<MP_PlayerInput>();
+        enemyAI = GetComponent<MP_EnemyAI>();
+        if (face != null)
+            faceRestPosition = face.transform.localPosition;
+
         if (GetComponent<SortingGroup>() == null)
         {
             SortingGroup sortingGroup = gameObject.AddComponent<SortingGroup>();
@@ -80,6 +99,8 @@ public class MP_PlayerCostume : NetworkBehaviour
     protected override void OnSpawned(bool asServer)
     {
         base.OnSpawned(asServer);
+        hasPreviousPosition = false;
+        faceOffset = Vector2.zero;
         if (isClient)
             ApplyCostume(indices.value);
     }
@@ -92,6 +113,57 @@ public class MP_PlayerCostume : NetworkBehaviour
         ring.transform.Rotate(0f, 0f, catalog.RingSpinSpeed * Time.deltaTime);
         ring.color = CostumeRingAnimation.WithBreathingAlpha(
             ring.color, Time.time, catalog);
+    }
+
+    internal void UpdateFacePosition(Vector2 position)
+    {
+        if (movement == null || face == null)
+            return;
+
+        Vector2 displacement = hasPreviousPosition
+            ? position - previousPosition : Vector2.zero;
+        previousPosition = position;
+        hasPreviousPosition = true;
+
+        Vector2 direction;
+        if ((movement.isOwner || movement.isServer) && enemyAI == null && playerInput != null)
+        {
+            bool roundEnded = MP_PlayerManager.Instance != null &&
+                MP_PlayerManager.Instance.RoundEnded;
+            direction = roundEnded ? Vector2.zero : playerInput.MovementInput;
+        }
+        else
+        {
+            direction = Time.deltaTime > 0f &&
+                displacement.sqrMagnitude > Time.deltaTime * Time.deltaTime * 0.0025f &&
+                displacement.sqrMagnitude < 4f
+                ? displacement / Mathf.Max(0.000001f,
+                    movement.CurrentFullMoveSpeed * Time.deltaTime)
+                : Vector2.zero;
+        }
+        float offsetAmount = Mathf.Clamp01(direction.magnitude);
+        Vector3 localDirection = face.transform.parent != null
+            ? face.transform.parent.InverseTransformDirection(direction)
+            : (Vector3)direction;
+        Vector2 targetOffset = ((Vector2)localDirection).normalized *
+            (faceOffsetDistance * offsetAmount);
+        faceOffset = Vector2.Lerp(faceOffset, targetOffset,
+            1f - Mathf.Exp(-faceFollowSpeed * Time.deltaTime));
+        Vector3 presentationOffset = face.transform.parent != null
+            ? face.transform.parent.InverseTransformVector(
+                (Vector3)(position - (Vector2)transform.position))
+            : (Vector3)(position - (Vector2)transform.position);
+        face.transform.localPosition = faceRestPosition + presentationOffset +
+            (Vector3)faceOffset;
+    }
+
+    protected override void OnDespawned(bool asServer)
+    {
+        faceOffset = Vector2.zero;
+        hasPreviousPosition = false;
+        if (face != null)
+            face.transform.localPosition = faceRestPosition;
+        base.OnDespawned(asServer);
     }
 
     private void ApplyCostume(MP_CostumeIndices selection)
