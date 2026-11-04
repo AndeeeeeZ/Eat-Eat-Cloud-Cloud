@@ -974,7 +974,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         if (pendingEventFood == 0 && now >= nextEventAt)
         {
-            float radius = Mathf.Max(0.1f, eventZoneRadius) * timer.FoodSizeMultiplier;
+            float radius = GetEventZoneRadius(timer.FoodSizeMultiplier);
             int zoneIndex = ChooseEventZone(radius);
             if (zoneIndex < 0)
             {
@@ -1119,7 +1119,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         float sizeMultiplier = timer.FoodSizeMultiplier;
         float foodRadius = GetFoodRadius(sizeMultiplier);
-        float zoneRadius = Mathf.Max(0.1f, eventZoneRadius) * sizeMultiplier;
+        float zoneRadius = GetEventZoneRadius(sizeMultiplier);
         if (zoneRadius < foodRadius)
         {
             pendingEventFood = 0;
@@ -1211,7 +1211,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         MP_CycleTimer timer = cycleTimer != null ? cycleTimer : MP_CycleTimer.Instance;
         float sizeMultiplier = timer != null ? timer.FoodSizeMultiplier : 1f;
-        float radius = Mathf.Max(0.1f, eventZoneRadius) * sizeMultiplier;
+        float radius = GetEventZoneRadius(sizeMultiplier);
         bool zonesChanged = false;
         for (int i = activeFoodEvents.Count - 1; i >= 0; i--)
         {
@@ -1271,7 +1271,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         MP_CycleTimer timer = cycleTimer != null ? cycleTimer : MP_CycleTimer.Instance;
         float multiplier = timer != null ? timer.FoodSizeMultiplier : 1f;
-        float radius = Mathf.Max(0.1f, eventZoneRadius) * multiplier;
+        float radius = GetEventZoneRadius(multiplier);
         int visibleCount = 0;
         foreach (FoodEventState foodEvent in activeFoodEvents)
             if (foodEvent.ZoneVisible)
@@ -1647,6 +1647,11 @@ public class MP_FoodSpawner : NetworkBehaviour
         return baseFoodRadius * sizeMultiplier;
     }
 
+    private float GetEventZoneRadius(float foodSizeMultiplier)
+    {
+        return Mathf.Max(0.1f, eventZoneRadius) * Mathf.Sqrt(Mathf.Max(0f, foodSizeMultiplier));
+    }
+
     private bool IsInOccupiedPlayerCell(Vector2 position)
     {
         MP_PlayerManager manager = MP_PlayerManager.Instance;
@@ -1858,7 +1863,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             timer = FindFirstObjectByType<MP_CycleTimer>();
         int cycle = Application.isPlaying ? GetCurrentCycle() : Mathf.Max(1, previewCycle);
         float multiplier = timer != null ? timer.GetFoodSizeMultiplierForCycle(cycle) : 1f;
-        float radius = Mathf.Max(0.1f, eventZoneRadius) * multiplier;
+        float radius = GetEventZoneRadius(multiplier);
         Gizmos.color = eventZoneGizmoColor;
         foreach (Transform center in eventZoneCenters)
             if (center != null)

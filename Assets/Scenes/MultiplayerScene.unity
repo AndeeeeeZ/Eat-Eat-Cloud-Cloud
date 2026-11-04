@@ -3825,7 +3825,6 @@ GameObject:
   - component: {fileID: 1034187462}
   - component: {fileID: 1034187464}
   - component: {fileID: 1034187465}
-  - component: {fileID: 1034187466}
   m_Layer: 0
   m_Name: Player Manager
   m_TagString: Untagged
@@ -3921,34 +3920,6 @@ MonoBehaviour:
   _visitiblityRules: {fileID: 0}
   pingInterval: 1
   timeout: 3
---- !u!114 &1034187466
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1034187461}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6fe16b03cfa961a429397887b341e45c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _isSetup: 0
-  _prefabId: -2147483648
-  _componentIndex: -2147483648
-  _shouldBePooled: 0
-  _parent: {fileID: 0}
-  _invertedPathToNearestParent: 
-  _directChildren: []
-  _networkRules: {fileID: 0}
-  _visitiblityRules: {fileID: 0}
-  cycleDurationSeconds: 60
-  finalCycle: 6
-  finalCycleDurationSeconds: 180
-  speedMultiplierPerCycle: 1.6
-  baseLevelsPerCycle: 0300000006000000090000000c0000000f000000
-  foodSizeMultiplierPerCycle: 1.8
-  foodExpMultiplierPerCycle: 2.3
 --- !u!1 &1053914653
 GameObject:
   m_ObjectHideFlags: 0
@@ -4269,7 +4240,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e0e3d196e224fb44931989625c35c6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cycleTimer: {fileID: 1034187466}
+  cycleTimer: {fileID: 0}
   cycleText: {fileID: 254957043}
   countdownText: {fileID: 144632890}
 --- !u!1 &1193365646
@@ -6817,6 +6788,68 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1684714731}
   m_CullTransparentMesh: 1
+--- !u!1 &1689994345
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1689994347}
+  - component: {fileID: 1689994346}
+  m_Layer: 0
+  m_Name: Cycle Timer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1689994346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1689994345}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fe16b03cfa961a429397887b341e45c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  cycleDurationSeconds: 60
+  finalCycle: 6
+  finalCycleDurationSeconds: 180
+  speedMultiplierPerCycle: 1.6
+  baseLevelsPerCycle: 0300000006000000090000000c0000000f000000
+  movementSpeedReductionPerLevelPercent: 7.5
+  maxMovementSpeedReductionPercent: 25
+  foodSizeMultiplierPerCycle: 1.8
+  foodExpMultiplierPerCycle: 2.2
+--- !u!4 &1689994347
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1689994345}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1729737986
 GameObject:
   m_ObjectHideFlags: 0
@@ -7062,13 +7095,13 @@ MonoBehaviour:
   eventFoodCount: 30
   eventDurationSeconds: 45
   eventZoneBreathWarningSeconds: 5
-  eventExperienceMultiplier: 2
+  eventExperienceMultiplier: 2.5
   eventFoodColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   eventMessageView: {fileID: 732049402}
   eventMessage: Bonus food has appeared!
-  eventMessageDuration: 4
-  minimumEventIntervalSeconds: 5
-  maximumEventIntervalSeconds: 10
+  eventMessageDuration: 3
+  minimumEventIntervalSeconds: 25
+  maximumEventIntervalSeconds: 45
   hideEventZoneGizmos: 0
   eventZoneGizmoColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   hideGridGizmos: 1
@@ -8416,6 +8449,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 1844623918}
   - {fileID: 2083505732}
+  - {fileID: 1689994347}
   - {fileID: 1034187463}
   - {fileID: 171673887}
   - {fileID: 385144706}

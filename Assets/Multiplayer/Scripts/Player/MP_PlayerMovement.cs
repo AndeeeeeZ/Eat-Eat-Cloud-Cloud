@@ -210,8 +210,10 @@ public class MP_PlayerMovement : NetworkBehaviour
     {
         int baseLevel = timer != null ? timer.MovementBaseLevel : 1;
         int playerLevel = playerGrowth != null ? playerGrowth.Level : 1;
-        int levelsAboveBase = Mathf.Clamp(playerLevel - baseLevel, 0, 4);
-        return 1f - levelsAboveBase * 0.05f;
+        int levelsAboveBase = Mathf.Max(0, playerLevel - baseLevel);
+        float reductionPerLevel = timer != null ? timer.MovementSpeedReductionPerLevel : 0.05f;
+        float maxReduction = timer != null ? timer.MaxMovementSpeedReduction : 0.2f;
+        return 1f - Mathf.Min(maxReduction, levelsAboveBase * reductionPerLevel);
     }
 
     private void CacheVisualChildren()
