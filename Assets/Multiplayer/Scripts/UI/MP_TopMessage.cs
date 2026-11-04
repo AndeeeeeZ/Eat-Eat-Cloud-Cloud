@@ -4,15 +4,14 @@ using UnityEngine;
 
 public class MP_TopMessage : MonoBehaviour
 {
-    private const float BreathPeriodSeconds = 1.5f;
-    private const float BreathMinimumAlpha = 0.3f;
-
     [SerializeField] private CanvasGroup messageGroup;
     [SerializeField] private TextMeshProUGUI messageText;
     [SerializeField, Min(0f)] private float fadeInDuration = 0.3f;
     [SerializeField, Min(0f)] private float fadeOutDuration = 0.3f;
+    [SerializeField, Min(0.01f)] private float breathPeriodSeconds = 1.5f;
+    [SerializeField, Range(0f, 1f)] private float breathMinimumAlpha = 0.3f;
 
-    private Coroutine animation;
+    private Coroutine messageCoroutine;
 
     private void Awake()
     {
@@ -33,10 +32,10 @@ public class MP_TopMessage : MonoBehaviour
 
     private void OnDisable()
     {
-        if (animation != null)
+        if (messageCoroutine != null)
         {
-            StopCoroutine(animation);
-            animation = null;
+            StopCoroutine(messageCoroutine);
+            messageCoroutine = null;
         }
 
         if (messageGroup != null)
@@ -50,7 +49,7 @@ public class MP_TopMessage : MonoBehaviour
 
         StopAnimation();
         messageText.text = message ?? string.Empty;
-        animation = StartCoroutine(ShowRoutine(Mathf.Max(0f, duration)));
+        messageCoroutine = StartCoroutine(ShowRoutine(Mathf.Max(0f, duration)));
     }
 
     public void FadeIn()
@@ -59,7 +58,7 @@ public class MP_TopMessage : MonoBehaviour
             return;
 
         StopAnimation();
-        animation = StartCoroutine(FadeTo(1f, fadeInDuration));
+        messageCoroutine = StartCoroutine(FadeTo(1f, fadeInDuration));
     }
 
     public void FadeOut()
@@ -68,16 +67,16 @@ public class MP_TopMessage : MonoBehaviour
             return;
 
         StopAnimation();
-        animation = StartCoroutine(FadeTo(0f, fadeOutDuration));
+        messageCoroutine = StartCoroutine(FadeTo(0f, fadeOutDuration));
     }
 
     private void StopAnimation()
     {
-        if (animation == null)
+        if (messageCoroutine == null)
             return;
 
-        StopCoroutine(animation);
-        animation = null;
+        StopCoroutine(messageCoroutine);
+        messageCoroutine = null;
     }
 
     private IEnumerator ShowRoutine(float duration)
@@ -85,17 +84,18 @@ public class MP_TopMessage : MonoBehaviour
         yield return FadeTo(1f, fadeInDuration);
 
         float elapsed = 0f;
+        float breathPeriod = Mathf.Max(0.01f, breathPeriodSeconds);
         while (elapsed < duration)
         {
             float breath = 0.5f + 0.5f * Mathf.Cos(
-                elapsed * Mathf.PI * 2f / BreathPeriodSeconds);
-            messageGroup.alpha = Mathf.Lerp(BreathMinimumAlpha, 1f, breath);
+                elapsed * Mathf.PI * 2f / breathPeriod);
+            messageGroup.alpha = Mathf.Lerp(breathMinimumAlpha, 1f, breath);
             elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
 
         yield return FadeTo(0f, fadeOutDuration);
-        animation = null;
+        messageCoroutine = null;
     }
 
     private IEnumerator FadeTo(float targetAlpha, float duration)
