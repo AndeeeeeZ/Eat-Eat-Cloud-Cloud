@@ -9,7 +9,7 @@ public class MP_MiniMap : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Image eventZoneTemplate;
     [SerializeField, Min(0f)] private float minimumEventZoneDiameter = 10f;
 
-    private const float EventZoneBlinkPeriodSeconds = 0.5f;
+    private const float EventZoneBreathPeriodSeconds = 1.2f;
 
     private readonly List<UnityEngine.UI.Image> eventZoneIndicators = new();
     private MP_Player displayedPlayer;
@@ -125,24 +125,29 @@ public class MP_MiniMap : MonoBehaviour
             Vector2 position = new Vector2(
                 offset.x / boundary.Size.x * mapRect.rect.width,
                 offset.y / boundary.Size.y * mapRect.rect.height);
-            Vector2 diameter = new Vector2(
-                2f * zone.Radius / boundary.Size.x * mapRect.rect.width,
-                2f * zone.Radius / boundary.Size.y * mapRect.rect.height);
-            diameter.x = Mathf.Max(diameter.x, minimumEventZoneDiameter);
-            diameter.y = Mathf.Max(diameter.y, minimumEventZoneDiameter);
+            // Keep the marker circular when the map and world aspect ratios differ
+            float mapUnitsPerWorldUnit = Mathf.Min(
+                mapRect.rect.width / boundary.Size.x,
+                mapRect.rect.height / boundary.Size.y);
+            float diameter = Mathf.Max(minimumEventZoneDiameter,
+                2f * zone.Radius * mapUnitsPerWorldUnit);
+            Vector2 markerSize = Vector2.one * diameter;
             if (markerRect.anchoredPosition != position)
                 markerRect.anchoredPosition = position;
-            if (markerRect.sizeDelta != diameter)
-                markerRect.sizeDelta = diameter;
+            if (markerRect.sizeDelta != markerSize)
+                markerRect.sizeDelta = markerSize;
             Color color = zone.Color;
             color.a *= eventZoneTemplate.color.a;
+            if (zone.IsBreathing)
+            {
+                float breath = 0.5f + 0.5f * Mathf.Sin(
+                    Time.unscaledTime * Mathf.PI * 2f / EventZoneBreathPeriodSeconds);
+                color.a *= Mathf.Lerp(0.2f, 1f, breath);
+            }
             if (indicator.color != color)
                 indicator.color = color;
-            bool visible = !zone.IsBlinking ||
-                Mathf.Repeat(Time.unscaledTime, EventZoneBlinkPeriodSeconds) <
-                EventZoneBlinkPeriodSeconds * 0.5f;
-            if (indicator.enabled != visible)
-                indicator.enabled = visible;
+            if (!indicator.enabled)
+                indicator.enabled = true;
             if (!indicator.gameObject.activeSelf)
                 indicator.gameObject.SetActive(true);
         }

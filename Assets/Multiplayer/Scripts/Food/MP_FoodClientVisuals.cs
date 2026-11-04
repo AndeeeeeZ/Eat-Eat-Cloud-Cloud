@@ -103,7 +103,7 @@ internal class MP_FoodClientVisuals
                 VisualData data = new(positions[i], sizes[i], eventFood[i], eventColor);
                 records.Add(ids[i], data);
                 if (IsNearCamera(data))
-                    Show(ids[i], data, !firstSnapshot && fadeIn[i]);
+                    Show(ids[i], data, fadeIn[i] && (!firstSnapshot || eventFood[i]));
             }
             else if (records.TryGetValue(ids[i], out VisualData previous) &&
                      !Mathf.Approximately(previous.Size, sizes[i]))

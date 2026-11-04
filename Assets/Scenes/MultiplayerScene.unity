@@ -7058,9 +7058,9 @@ MonoBehaviour:
   - {fileID: 1280933161}
   - {fileID: 1059045383}
   eventZoneRadius: 30
-  eventFoodCount: 40
+  eventFoodCount: 30
   eventDurationSeconds: 45
-  eventZoneBlinkWarningSeconds: 5
+  eventZoneBreathWarningSeconds: 5
   eventExperienceMultiplier: 2
   eventFoodColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   eventMessageView: {fileID: 732049402}

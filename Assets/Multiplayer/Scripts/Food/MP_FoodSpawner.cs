@@ -10,14 +10,14 @@ public struct MP_FoodEventZone : IPackedAuto
     public Vector2 Center;
     public float Radius;
     public Color Color;
-    public bool IsBlinking;
+    public bool IsBreathing;
 
-    public MP_FoodEventZone(Vector2 center, float radius, Color color, bool isBlinking)
+    public MP_FoodEventZone(Vector2 center, float radius, Color color, bool isBreathing)
     {
         Center = center;
         Radius = radius;
         Color = color;
-        IsBlinking = isBlinking;
+        IsBreathing = isBreathing;
     }
 }
 
@@ -102,17 +102,19 @@ public class MP_FoodSpawner : NetworkBehaviour
     {
         public readonly int Id;
         public readonly Vector2 Center;
-        public readonly double ExpiresAt;
+        public double RemainingSeconds;
+        public double LastTimerUpdateAt;
         public int FoodCount;
         public int SpawnedCount;
         public bool ZoneVisible = true;
-        public bool ZoneBlinking;
+        public bool ZoneBreathing;
 
-        public FoodEventState(int id, Vector2 center, double expiresAt)
+        public FoodEventState(int id, Vector2 center, double now, float duration)
         {
             Id = id;
             Center = center;
-            ExpiresAt = expiresAt;
+            RemainingSeconds = duration;
+            LastTimerUpdateAt = now;
         }
     }
 
@@ -146,7 +148,8 @@ public class MP_FoodSpawner : NetworkBehaviour
     [SerializeField, Min(0.1f)] private float eventZoneRadius = 5f;
     [SerializeField, Min(1)] private int eventFoodCount = 12;
     [SerializeField, Min(0.1f)] private float eventDurationSeconds = 30f;
-    [SerializeField, Min(0f)] private float eventZoneBlinkWarningSeconds = 5f;
+    [FormerlySerializedAs("eventZoneBlinkWarningSeconds")]
+    [SerializeField, Min(0f)] private float eventZoneBreathWarningSeconds = 5f;
     [SerializeField, Min(1f)] private float eventExperienceMultiplier = 3f;
     [SerializeField] private Color eventFoodColor = Color.yellow;
     [SerializeField] private MP_TopMessage eventMessageView;
@@ -209,6 +212,9 @@ public class MP_FoodSpawner : NetworkBehaviour
     private int pendingEventFood;
     private FoodEventState currentFoodEvent;
     private Vector2 pendingEventCenter;
+    private int pendingEventZoneIndex = -1;
+    private Vector2 lastEventCenter;
+    private int lastEventZoneIndex = -1;
     private int nextEventId = 1;
     private int failedEventSpawnAttempts;
     private double nextEventAt;
@@ -401,6 +407,9 @@ public class MP_FoodSpawner : NetworkBehaviour
             expiredEventFoodIds.Clear();
             currentFoodEvent = null;
             pendingEventCenter = default;
+            pendingEventZoneIndex = -1;
+            lastEventCenter = default;
+            lastEventZoneIndex = -1;
             reindexFoodIds.Clear();
             nearbyChunksByPlayer.Clear();
             clientAspectRatios.Clear();
@@ -478,6 +487,9 @@ public class MP_FoodSpawner : NetworkBehaviour
         expiredEventFoodIds.Clear();
         currentFoodEvent = null;
         pendingEventCenter = default;
+        pendingEventZoneIndex = -1;
+        lastEventCenter = default;
+        lastEventZoneIndex = -1;
         activeEventZones.value = Array.Empty<MP_FoodEventZone>();
         reindexFoodIds.Clear();
         nearbyChunksByPlayer.Clear();
@@ -973,6 +985,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             warnedNoAvailableEventZone = false;
             pendingEventFood = Mathf.Max(1, eventFoodCount);
             pendingEventCenter = eventZoneCenters[zoneIndex].position;
+            pendingEventZoneIndex = zoneIndex;
             failedEventSpawnAttempts = 0;
             nextEventSpawnAttemptAt = 0d;
             ScheduleNextEvent(now);
@@ -1032,7 +1045,15 @@ public class MP_FoodSpawner : NetworkBehaviour
         for (int i = 0; i < eventZoneCenters.Length; i++)
         {
             Transform center = eventZoneCenters[i];
-            if (center == null || IsPlayerInsideEventZone(center.position, radius))
+            if (center == null)
+                continue;
+
+            Vector2 position = center.position;
+            if (i == lastEventZoneIndex ||
+                (lastEventZoneIndex >= 0 &&
+                 (position - lastEventCenter).sqrMagnitude <= 0.0001f) ||
+                IsPlayerInsideEventZone(position, radius) ||
+                OverlapsActiveFoodEvent(position, radius))
                 continue;
 
             validCount++;
@@ -1042,11 +1063,23 @@ public class MP_FoodSpawner : NetworkBehaviour
 
         if (chosenIndex < 0 && !warnedNoAvailableEventZone)
         {
-            Debug.LogWarning("Food event is waiting for a zone without a player inside it", this);
+            Debug.LogWarning("Food event is waiting for a zone clear of players and active events and different from the previous location", this);
             warnedNoAvailableEventZone = true;
         }
 
         return chosenIndex;
+    }
+
+    private bool OverlapsActiveFoodEvent(Vector2 center, float radius)
+    {
+        float minimumSeparation = radius * 2f;
+        float minimumSeparationSquared = minimumSeparation * minimumSeparation;
+        foreach (FoodEventState foodEvent in activeFoodEvents)
+            if (foodEvent.FoodCount > 0 &&
+                (center - foodEvent.Center).sqrMagnitude <= minimumSeparationSquared)
+                return true;
+
+        return false;
     }
 
     private static bool IsPlayerInsideEventZone(Vector2 center, float radius)
@@ -1106,8 +1139,10 @@ public class MP_FoodSpawner : NetworkBehaviour
             if (currentFoodEvent == null)
             {
                 currentFoodEvent = new FoodEventState(nextEventId++, pendingEventCenter,
-                    Time.realtimeSinceStartupAsDouble + Mathf.Max(0.1f, eventDurationSeconds));
+                    Time.realtimeSinceStartupAsDouble, Mathf.Max(0.1f, eventDurationSeconds));
                 activeFoodEvents.Add(currentFoodEvent);
+                lastEventCenter = pendingEventCenter;
+                lastEventZoneIndex = pendingEventZoneIndex;
             }
 
             uint foodId = nextFoodId++;
@@ -1141,6 +1176,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         if (currentFoodEvent != null)
             HideDepletedEventZone(currentFoodEvent);
         currentFoodEvent = null;
+        pendingEventZoneIndex = -1;
     }
 
     private void RemoveEventFood(int eventId)
@@ -1173,17 +1209,28 @@ public class MP_FoodSpawner : NetworkBehaviour
         if (!isServer || !isSpawned || activeFoodEvents.Count == 0)
             return;
 
+        MP_CycleTimer timer = cycleTimer != null ? cycleTimer : MP_CycleTimer.Instance;
+        float sizeMultiplier = timer != null ? timer.FoodSizeMultiplier : 1f;
+        float radius = Mathf.Max(0.1f, eventZoneRadius) * sizeMultiplier;
         bool zonesChanged = false;
         for (int i = activeFoodEvents.Count - 1; i >= 0; i--)
         {
             FoodEventState foodEvent = activeFoodEvents[i];
-            if (now < foodEvent.ExpiresAt)
+            double elapsed = Math.Max(0d, now - foodEvent.LastTimerUpdateAt);
+            foodEvent.LastTimerUpdateAt = now;
+            bool playerInside = foodEvent.FoodCount > 0 &&
+                IsPlayerInsideEventZone(foodEvent.Center, radius);
+            if (!playerInside)
+                foodEvent.RemainingSeconds = Math.Max(0d, foodEvent.RemainingSeconds - elapsed);
+
+            if (foodEvent.RemainingSeconds > 0d)
             {
-                if (foodEvent.ZoneVisible && !foodEvent.ZoneBlinking &&
-                    eventZoneBlinkWarningSeconds > 0f &&
-                    foodEvent.ExpiresAt - now <= eventZoneBlinkWarningSeconds)
+                bool shouldBreathe = foodEvent.ZoneVisible && !playerInside &&
+                    eventZoneBreathWarningSeconds > 0f &&
+                    foodEvent.RemainingSeconds <= eventZoneBreathWarningSeconds;
+                if (foodEvent.ZoneBreathing != shouldBreathe)
                 {
-                    foodEvent.ZoneBlinking = true;
+                    foodEvent.ZoneBreathing = shouldBreathe;
                     zonesChanged = true;
                 }
                 continue;
@@ -1193,6 +1240,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             {
                 pendingEventFood = 0;
                 currentFoodEvent = null;
+                pendingEventZoneIndex = -1;
                 failedEventSpawnAttempts = 0;
                 nextEventSpawnAttemptAt = 0d;
             }
@@ -1205,7 +1253,7 @@ public class MP_FoodSpawner : NetworkBehaviour
 
             foreach (uint id in expiredEventFoodIds)
                 if (foodRecords.TryGetValue(id, out FoodRecord record))
-                    RemoveFoodRecord(record);
+                    RemoveFoodRecord(record, true);
 
             activeFoodEvents.RemoveAt(i);
             zonesChanged = true;
@@ -1234,7 +1282,7 @@ public class MP_FoodSpawner : NetworkBehaviour
         foreach (FoodEventState foodEvent in activeFoodEvents)
             if (foodEvent.ZoneVisible)
                 zones[index++] = new MP_FoodEventZone(foodEvent.Center, radius,
-                    eventFoodColor, foodEvent.ZoneBlinking);
+                    eventFoodColor, foodEvent.ZoneBreathing);
         activeEventZones.value = zones;
     }
 
