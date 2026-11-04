@@ -4240,7 +4240,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e0e3d196e224fb44931989625c35c6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cycleTimer: {fileID: 0}
+  cycleTimer: {fileID: 1689994346}
   cycleText: {fileID: 254957043}
   countdownText: {fileID: 144632890}
 --- !u!1 &1193365646

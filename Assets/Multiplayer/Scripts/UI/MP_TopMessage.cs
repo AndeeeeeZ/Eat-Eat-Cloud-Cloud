@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class MP_TopMessage : MonoBehaviour
 {
+    private const float BreathPeriodSeconds = 1.5f;
+    private const float BreathMinimumAlpha = 0.3f;
+
     [SerializeField] private CanvasGroup messageGroup;
     [SerializeField] private TextMeshProUGUI messageText;
     [SerializeField, Min(0f)] private float fadeInDuration = 0.3f;
@@ -84,6 +87,9 @@ public class MP_TopMessage : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < duration)
         {
+            float breath = 0.5f + 0.5f * Mathf.Cos(
+                elapsed * Mathf.PI * 2f / BreathPeriodSeconds);
+            messageGroup.alpha = Mathf.Lerp(BreathMinimumAlpha, 1f, breath);
             elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
