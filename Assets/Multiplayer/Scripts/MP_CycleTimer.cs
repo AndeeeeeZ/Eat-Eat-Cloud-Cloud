@@ -33,6 +33,7 @@ public class MP_CycleTimer : NetworkBehaviour
     public static MP_CycleTimer Instance { get; private set; }
     public int CurrentCycle => isSpawned ? currentCycle.value : 0;
     public int FinalCycle => Mathf.Max(1, finalCycle);
+    public int JoiningCycleLimit => joiningCycleLimit.value;
     public int SecondsRemaining => isSpawned ? secondsRemaining.value : 0;
     public bool IsJoiningOpen => CurrentCycle <= joiningCycleLimit.value;
     public int SecondsUntilJoiningCloses => isSpawned ? secondsUntilJoiningCloses.value : 0;

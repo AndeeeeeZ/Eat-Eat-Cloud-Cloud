@@ -10,8 +10,11 @@ public class MP_TopMessage : MonoBehaviour
     [SerializeField, Min(0f)] private float fadeOutDuration = 0.3f;
     [SerializeField, Min(0.01f)] private float breathPeriodSeconds = 1.5f;
     [SerializeField, Range(0f, 1f)] private float breathMinimumAlpha = 0.3f;
+    [Header("Cycle Announcements")]
+    [SerializeField, Min(0f)] private float cycleMessageDuration = 4f;
 
     private Coroutine messageCoroutine;
+    private int lastAnnouncedCycle;
 
     private void Awake()
     {
@@ -32,6 +35,7 @@ public class MP_TopMessage : MonoBehaviour
 
     private void OnDisable()
     {
+        lastAnnouncedCycle = 0;
         if (messageCoroutine != null)
         {
             StopCoroutine(messageCoroutine);
@@ -40,6 +44,38 @@ public class MP_TopMessage : MonoBehaviour
 
         if (messageGroup != null)
             messageGroup.alpha = 0f;
+    }
+
+    private void Update()
+    {
+        MP_CycleTimer timer = MP_CycleTimer.Instance;
+        int cycle = timer != null ? timer.CurrentCycle : 0;
+        if (cycle == lastAnnouncedCycle)
+            return;
+
+        lastAnnouncedCycle = cycle;
+        if (cycle <= 0)
+        {
+            FadeOut();
+            return;
+        }
+
+        string message = cycle == timer.FinalCycle
+            ? "biggest player wins."
+            : cycle == timer.FinalCycle - 1
+                ? "Last round before the final round"
+                : "";
+
+        if (!timer.JoiningOpenForWholeRound && cycle == timer.JoiningCycleLimit)
+        {
+            const string joiningMessage = "Joining and respawning will close after this round";
+            message = string.IsNullOrEmpty(message)
+                ? joiningMessage
+                : $"{message}\n{joiningMessage}";
+        }
+
+        if (!string.IsNullOrEmpty(message))
+            ShowMessage(message, cycleMessageDuration);
     }
 
     public void ShowMessage(string message, float duration)
