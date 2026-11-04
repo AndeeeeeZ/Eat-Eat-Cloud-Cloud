@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
@@ -15,6 +16,8 @@ public class MP_TopMessage : MonoBehaviour
 
     private Coroutine messageCoroutine;
     private int lastAnnouncedCycle;
+    private readonly Queue<(string text, float duration)> pendingMessages = new();
+    private string currentMessage;
 
     private void Awake()
     {
@@ -36,11 +39,9 @@ public class MP_TopMessage : MonoBehaviour
     private void OnDisable()
     {
         lastAnnouncedCycle = 0;
-        if (messageCoroutine != null)
-        {
-            StopCoroutine(messageCoroutine);
-            messageCoroutine = null;
-        }
+        StopAnimation();
+        pendingMessages.Clear();
+        currentMessage = null;
 
         if (messageGroup != null)
             messageGroup.alpha = 0f;
@@ -60,22 +61,17 @@ public class MP_TopMessage : MonoBehaviour
             return;
         }
 
-        string message = cycle == timer.FinalCycle
-            ? "biggest player wins."
-            : cycle == timer.FinalCycle - 1
-                ? "Last round before the final round"
-                : "";
+        if (!timer.JoiningOpenForWholeRound && cycle > 1 &&
+            cycle - 1 == timer.JoiningCycleLimit)
+            ShowMessage("Joining and respawning are now closed", cycleMessageDuration);
+
+        if (cycle == timer.FinalCycle - 1)
+            ShowMessage("Last round before the final round", cycleMessageDuration);
+        else if (cycle == timer.FinalCycle)
+            ShowMessage("biggest player wins.", cycleMessageDuration);
 
         if (!timer.JoiningOpenForWholeRound && cycle == timer.JoiningCycleLimit)
-        {
-            const string joiningMessage = "Joining and respawning will close after this round";
-            message = string.IsNullOrEmpty(message)
-                ? joiningMessage
-                : $"{message}\n{joiningMessage}";
-        }
-
-        if (!string.IsNullOrEmpty(message))
-            ShowMessage(message, cycleMessageDuration);
+            ShowMessage("Joining and respawning will close after this round", cycleMessageDuration);
     }
 
     public void ShowMessage(string message, float duration)
@@ -83,9 +79,17 @@ public class MP_TopMessage : MonoBehaviour
         if (!isActiveAndEnabled || messageGroup == null || messageText == null)
             return;
 
-        StopAnimation();
-        messageText.text = message ?? string.Empty;
-        messageCoroutine = StartCoroutine(ShowRoutine(Mathf.Max(0f, duration)));
+        string requestedMessage = message ?? string.Empty;
+        if (currentMessage == requestedMessage)
+            return;
+
+        foreach (var pending in pendingMessages)
+            if (pending.text == requestedMessage)
+                return;
+
+        pendingMessages.Enqueue((requestedMessage, Mathf.Max(0f, duration)));
+        if (messageCoroutine == null)
+            messageCoroutine = StartCoroutine(ShowQueuedMessages());
     }
 
     public void FadeIn()
@@ -94,7 +98,9 @@ public class MP_TopMessage : MonoBehaviour
             return;
 
         StopAnimation();
-        messageCoroutine = StartCoroutine(FadeTo(1f, fadeInDuration));
+        pendingMessages.Clear();
+        currentMessage = null;
+        messageCoroutine = StartCoroutine(FadeAndResume(1f, fadeInDuration));
     }
 
     public void FadeOut()
@@ -103,7 +109,9 @@ public class MP_TopMessage : MonoBehaviour
             return;
 
         StopAnimation();
-        messageCoroutine = StartCoroutine(FadeTo(0f, fadeOutDuration));
+        pendingMessages.Clear();
+        currentMessage = null;
+        messageCoroutine = StartCoroutine(FadeAndResume(0f, fadeOutDuration));
     }
 
     private void StopAnimation()
@@ -115,23 +123,39 @@ public class MP_TopMessage : MonoBehaviour
         messageCoroutine = null;
     }
 
-    private IEnumerator ShowRoutine(float duration)
+    private IEnumerator ShowQueuedMessages()
     {
-        yield return FadeTo(1f, fadeInDuration);
-
-        float elapsed = 0f;
-        float breathPeriod = Mathf.Max(0.01f, breathPeriodSeconds);
-        while (elapsed < duration)
+        while (pendingMessages.Count > 0)
         {
-            float breath = 0.5f + 0.5f * Mathf.Cos(
-                elapsed * Mathf.PI * 2f / breathPeriod);
-            messageGroup.alpha = Mathf.Lerp(breathMinimumAlpha, 1f, breath);
-            elapsed += Time.unscaledDeltaTime;
-            yield return null;
+            (string text, float duration) = pendingMessages.Dequeue();
+            currentMessage = text;
+            messageText.text = text;
+            yield return FadeTo(1f, fadeInDuration);
+
+            float elapsed = 0f;
+            float breathPeriod = Mathf.Max(0.01f, breathPeriodSeconds);
+            while (elapsed < duration)
+            {
+                float breath = 0.5f + 0.5f * Mathf.Cos(
+                    elapsed * Mathf.PI * 2f / breathPeriod);
+                messageGroup.alpha = Mathf.Lerp(breathMinimumAlpha, 1f, breath);
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            yield return FadeTo(0f, fadeOutDuration);
+            currentMessage = null;
         }
 
-        yield return FadeTo(0f, fadeOutDuration);
         messageCoroutine = null;
+    }
+
+    private IEnumerator FadeAndResume(float targetAlpha, float duration)
+    {
+        yield return FadeTo(targetAlpha, duration);
+        messageCoroutine = null;
+        if (pendingMessages.Count > 0)
+            messageCoroutine = StartCoroutine(ShowQueuedMessages());
     }
 
     private IEnumerator FadeTo(float targetAlpha, float duration)

@@ -2520,6 +2520,7 @@ MonoBehaviour:
   fadeOutDuration: 0.75
   breathPeriodSeconds: 1.5
   breathMinimumAlpha: 0.3
+  cycleMessageDuration: 4
 --- !u!225 &732049403
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -4280,7 +4281,7 @@ GameObject:
   - component: {fileID: 1173072632}
   - component: {fileID: 1173072631}
   m_Layer: 5
-  m_Name: Cycle Timer
+  m_Name: Cycle Timer UI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
