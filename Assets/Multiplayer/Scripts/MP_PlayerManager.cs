@@ -58,7 +58,7 @@ public class MP_PlayerManager : NetworkBehaviour
 
     public static MP_PlayerManager Instance { get; private set; }
     private readonly List<MP_PlayerStats> players = new();
-    private readonly List<MP_RoundStanding> roundStandings = new();
+    private readonly List<RoundStandingRecord> roundStandings = new();
     public IReadOnlyList<MP_PlayerStats> Players => players;
     private readonly SyncVar<bool> roundEnded = new(false);
     private readonly SyncVar<int> emptyRoundRestartCount = new(0);
@@ -109,6 +109,13 @@ public class MP_PlayerManager : NetworkBehaviour
         public bool IsAlive => Cloud != null && Cloud.IsAlive;
         public bool CanRespawn { get; internal set; }
         public bool ReadyToStart { get; internal set; }
+    }
+
+    private struct RoundStandingRecord
+    {
+        public MP_RoundStanding Standing;
+        public double SurvivedUntil;
+        public bool SurvivedToEnd;
     }
 
     private readonly Dictionary<PlayerID, PlayerSession> sessions = new();
@@ -292,15 +299,15 @@ public class MP_PlayerManager : NetworkBehaviour
         EndRoundWithWinner(stats, winner);
     }
 
-    public void EndRoundForLargestCloud()
+    public void EndRoundForHighestExp()
     {
         if (!isServer || !isSpawned || resettingRound || sessions.Count == 0 || RoundEnded ||
             MP_CycleTimer.Instance == null ||
             MP_CycleTimer.Instance.CurrentCycle < MP_CycleTimer.Instance.FinalCycle)
             return;
 
-        MP_PlayerStats largestStats = null;
-        MP_Player largestPlayer = null;
+        MP_PlayerStats highestStats = null;
+        MP_Player highestPlayer = null;
         foreach (MP_PlayerStats stats in players)
         {
             if (stats == null)
@@ -310,19 +317,17 @@ public class MP_PlayerManager : NetworkBehaviour
             if (player == null || !player.IsAlive)
                 continue;
 
-            if (largestStats == null || stats.Scale > largestStats.Scale ||
-                (stats.Scale == largestStats.Scale &&
-                    (stats.TotalExp > largestStats.TotalExp ||
-                     (stats.TotalExp == largestStats.TotalExp &&
-                      player.objectId < largestPlayer.objectId))))
+            if (highestStats == null || stats.TotalExp > highestStats.TotalExp ||
+                (stats.TotalExp == highestStats.TotalExp &&
+                    player.objectId < highestPlayer.objectId))
             {
-                largestStats = stats;
-                largestPlayer = player;
+                highestStats = stats;
+                highestPlayer = player;
             }
         }
 
-        if (largestStats != null)
-            EndRoundWithWinner(largestStats, largestPlayer);
+        if (highestStats != null)
+            EndRoundWithWinner(highestStats, highestPlayer);
         else
             FinishRound(null, "");
     }
@@ -336,19 +341,24 @@ public class MP_PlayerManager : NetworkBehaviour
     {
         foreach (MP_PlayerStats stats in players)
             if (stats != null && stats.TryGetComponent(out MP_Player cloud) && cloud.IsAlive)
-                RecordStanding(cloud);
-
-        if (winner != null)
-            RecordStanding(winner, true);
+                RecordStanding(cloud, true);
 
         roundStandings.Sort((left, right) =>
         {
-            bool leftWon = winner != null && left.ObjectId == winner.objectId;
-            bool rightWon = winner != null && right.ObjectId == winner.objectId;
+            bool leftWon = winner != null && left.Standing.ObjectId == winner.objectId;
+            bool rightWon = winner != null && right.Standing.ObjectId == winner.objectId;
             if (leftWon != rightWon)
                 return leftWon ? -1 : 1;
-            int scoreOrder = right.TotalExp.CompareTo(left.TotalExp);
-            return scoreOrder != 0 ? scoreOrder : left.ObjectId.CompareTo(right.ObjectId);
+            if (left.SurvivedToEnd != right.SurvivedToEnd)
+                return left.SurvivedToEnd ? -1 : 1;
+            int order = left.SurvivedToEnd
+                ? right.Standing.TotalExp.CompareTo(left.Standing.TotalExp)
+                : right.SurvivedUntil.CompareTo(left.SurvivedUntil);
+            if (order != 0)
+                return order;
+            int scoreOrder = right.Standing.TotalExp.CompareTo(left.Standing.TotalExp);
+            return scoreOrder != 0 ? scoreOrder :
+                left.Standing.ObjectId.CompareTo(right.Standing.ObjectId);
         });
 
         roundEnded.value = true;
@@ -368,7 +378,7 @@ public class MP_PlayerManager : NetworkBehaviour
                 MP_RoundStanding[] podium = new MP_RoundStanding[count];
                 for (int i = 0; i < count; i++)
                 {
-                    podium[i] = roundStandings[i];
+                    podium[i] = roundStandings[i].Standing;
                     podium[i].IsLocal = !podium[i].IsAI && podium[i].OwnerId == target;
                 }
                 ReceiveRoundResults(target, resultsSceneName, winnerName, podium);
@@ -376,7 +386,7 @@ public class MP_PlayerManager : NetworkBehaviour
         }
     }
 
-    private void RecordStanding(MP_Player cloud, bool replace = false)
+    private void RecordStanding(MP_Player cloud, bool survivedToEnd = false)
     {
         if (cloud == null || cloud.Stats == null)
             return;
@@ -395,18 +405,23 @@ public class MP_PlayerManager : NetworkBehaviour
             Costume = costume != null ? costume.CurrentIndices : default,
             TotalExp = cloud.Stats.TotalExp
         };
+        RoundStandingRecord record = new()
+        {
+            Standing = standing,
+            SurvivedUntil = Time.realtimeSinceStartupAsDouble,
+            SurvivedToEnd = survivedToEnd
+        };
 
         for (int i = 0; i < roundStandings.Count; i++)
         {
-            MP_RoundStanding previous = roundStandings[i];
+            MP_RoundStanding previous = roundStandings[i].Standing;
             if (isAI ? !previous.IsAI || previous.ObjectId != standing.ObjectId :
                 previous.IsAI || previous.OwnerId != standing.OwnerId)
                 continue;
-            if (replace || standing.TotalExp >= previous.TotalExp)
-                roundStandings[i] = standing;
+            roundStandings[i] = record;
             return;
         }
-        roundStandings.Add(standing);
+        roundStandings.Add(record);
     }
 
     [TargetRpc]

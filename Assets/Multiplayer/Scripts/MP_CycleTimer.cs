@@ -123,7 +123,7 @@ public class MP_CycleTimer : NetworkBehaviour
                 nextCycleAt = 0d;
                 secondsRemaining.value = 0;
                 secondsUntilJoiningCloses.value = 0;
-                manager?.EndRoundForLargestCloud();
+                manager?.EndRoundForHighestExp();
                 return;
             }
 
