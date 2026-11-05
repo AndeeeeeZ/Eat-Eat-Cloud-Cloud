@@ -967,7 +967,10 @@ public class MP_FoodSpawner : NetworkBehaviour
                 record.SpawnCycle >= currentCycle)
                 continue;
 
-            if (!record.IsEventFood && IsOutsideAllPlayerViews(record.Position, record.Radius))
+            bool exceedsRegionLimit = !record.IsEventFood && spawnRegions.Count > 0 &&
+                spawnRegions[cellRegionIndices[record.CellIndex]].FoodCount > indexedMaxFoodPerGrid;
+            if (!record.IsEventFood &&
+                (exceedsRegionLimit || IsOutsideAllPlayerViews(record.Position, record.Radius)))
             {
                 RemoveFoodRecord(record, true);
                 QueueReplacement(record);
