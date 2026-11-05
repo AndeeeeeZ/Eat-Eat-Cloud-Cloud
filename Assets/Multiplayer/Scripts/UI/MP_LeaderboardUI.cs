@@ -1,6 +1,7 @@
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class MP_LeaderboardUI : MonoBehaviour
 {
@@ -8,6 +9,8 @@ public class MP_LeaderboardUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI topPlayersText;
     [SerializeField] private TextMeshProUGUI localPlayerRankText;
     [SerializeField, Min(1)] private int topPlayersToShow = 5;
+    [FormerlySerializedAs("localPlayerNameColor")]
+    [SerializeField] private Color32 localPlayerHighlightColor = new(255, 220, 80, 255);
 
     private MP_LocalPlayerManager localPlayerManager;
     private MP_Player displayedPlayer;
@@ -16,6 +19,19 @@ public class MP_LeaderboardUI : MonoBehaviour
     private TextWrappingModes originalTextWrappingMode;
     private TextOverflowModes originalOverflowMode;
     private bool textConfigured;
+    private int localRowStart = -1;
+    private int localRowLength;
+
+    public void SetTopPlayersToShow(int count)
+    {
+        int clampedCount = Mathf.Max(1, count);
+        if (topPlayersToShow == clampedCount)
+            return;
+
+        topPlayersToShow = clampedCount;
+        if (isActiveAndEnabled)
+            Refresh();
+    }
 
     private void OnEnable()
     {
@@ -32,6 +48,7 @@ public class MP_LeaderboardUI : MonoBehaviour
         originalOverflowMode = topPlayersText.overflowMode;
         topPlayersText.textWrappingMode = TextWrappingModes.NoWrap;
         topPlayersText.overflowMode = TextOverflowModes.Overflow;
+        topPlayersText.OnPreRenderText += ColorLocalPlayerRow;
         textConfigured = true;
         leaderboard.OnLeaderboardChanged += Refresh;
 
@@ -51,6 +68,7 @@ public class MP_LeaderboardUI : MonoBehaviour
         {
             topPlayersText.textWrappingMode = originalTextWrappingMode;
             topPlayersText.overflowMode = originalOverflowMode;
+            topPlayersText.OnPreRenderText -= ColorLocalPlayerRow;
         }
         textConfigured = false;
         if (leaderboard != null)
@@ -86,6 +104,9 @@ public class MP_LeaderboardUI : MonoBehaviour
         text.Clear();
         int topCount = Mathf.Min(Mathf.Max(1, topPlayersToShow), entries.Count);
         int rankWidth = Mathf.Max(1, topPlayersToShow).ToString().Length;
+        MP_Player localPlayer = localPlayerManager != null ? localPlayerManager.LocalPlayer : null;
+        localRowStart = -1;
+        localRowLength = 0;
         for (int i = 0; i < topCount; i++)
         {
             if (i > 0)
@@ -93,11 +114,18 @@ public class MP_LeaderboardUI : MonoBehaviour
             string name = string.IsNullOrWhiteSpace(entries[i].PlayerName)
                 ? "Unnamed"
                 : entries[i].PlayerName.Replace('\r', ' ').Replace('\n', ' ');
+            int rowStart = text.Length;
             text.Append((i + 1).ToString().PadLeft(rankWidth)).Append(". ")
                 .Append(name.PadRight(MP_PlayerNameRules.MaxLength))
                 .Append("  Lvl. ").Append(entries[i].Level.ToString("D2"));
+            if (localPlayer != null && entries[i].ObjectId == localPlayer.objectId)
+            {
+                localRowStart = rowStart;
+                localRowLength = text.Length - rowStart;
+            }
         }
         topPlayersText.text = topCount > 0 ? text.ToString() : "No players yet";
+        topPlayersText.ForceMeshUpdate();
 
         MP_SpectatorMode spectator = MP_SpectatorMode.Instance;
         displayingSpectator = spectator != null && spectator.IsSpectating;
@@ -116,6 +144,24 @@ public class MP_LeaderboardUI : MonoBehaviour
 
             localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count} Lvl. {entries[i].Level:D2}";
             break;
+        }
+    }
+
+    private void ColorLocalPlayerRow(TMP_TextInfo textInfo)
+    {
+        if (localRowStart < 0)
+            return;
+
+        int end = localRowStart + localRowLength;
+        for (int i = 0; i < textInfo.characterCount; i++)
+        {
+            TMP_CharacterInfo character = textInfo.characterInfo[i];
+            if (!character.isVisible || character.index < localRowStart || character.index >= end)
+                continue;
+
+            Color32[] colors = textInfo.meshInfo[character.materialReferenceIndex].colors32;
+            for (int vertex = 0; vertex < 4; vertex++)
+                colors[character.vertexIndex + vertex] = localPlayerHighlightColor;
         }
     }
 }

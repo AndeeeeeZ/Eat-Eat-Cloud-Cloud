@@ -6754,7 +6754,10 @@ MonoBehaviour:
   leaderboard: {fileID: 1034187464}
   topPlayersText: {fileID: 879777075}
   localPlayerRankText: {fileID: 1193365648}
-  topPlayersToShow: 5
+  topPlayersToShow: 6
+  localPlayerHighlightColor:
+    serializedVersion: 2
+    rgba: 4283473919
 --- !u!1 &1647181637
 GameObject:
   m_ObjectHideFlags: 0
