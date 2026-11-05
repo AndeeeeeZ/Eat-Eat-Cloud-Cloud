@@ -6467,7 +6467,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.7735849, g: 0.7735849, b: 0.7735849, a: 1}
+  m_Color: {r: 0.7169812, g: 0.7169812, b: 0.7169812, a: 0.7176471}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -9211,7 +9211,7 @@ MonoBehaviour:
   abilityDisplay: {fileID: 1827400130}
   radialOverlay: {fileID: 1748260824}
   countdownText: {fileID: 1336652525}
-  activeOverlayColor: {r: 0.6226415, g: 0.6226415, b: 0.6226415, a: 0.7}
+  activeOverlayColor: {r: 0.29411766, g: 0.29411766, b: 0.29411766, a: 0.7490196}
   cooldownOverlayColor: {r: 0.2924528, g: 0.2924528, b: 0.2924528, a: 0.75}
   cooldownAttemptTextColor: {r: 1, g: 0.3915094, b: 0.3915094, a: 1}
   shakeDurationSeconds: 0.35

@@ -13,6 +13,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     [SerializeField, Min(1f)] private float boostSpeedMultiplier = 2f;
     [SerializeField, Min(0.01f)] private float boostDurationSeconds = 2f;
     [SerializeField, Min(0f)] private float boostCooldownSeconds = 5f;
+    [SerializeField] private ParticleSystem boostParticles;
     private readonly SyncVar<bool> boostActive = new(false);
     private MP_PlayerInput playerInput;
     private MP_EnemyAI enemyAI;
@@ -95,6 +96,7 @@ public class MP_PlayerMovement : NetworkBehaviour
         playerEating = GetComponentInChildren<MP_PlayerEating>();
         bodyCollider = GetComponent<CircleCollider2D>();
         CacheVisualChildren();
+        SetBoostParticles(false);
     }
 
     protected override void OnSpawned(bool asServer)
@@ -113,6 +115,7 @@ public class MP_PlayerMovement : NetworkBehaviour
             boostVisualEndsAt = boostActive.value
                 ? Time.realtimeSinceStartupAsDouble + SpeedBoostDuration : 0d;
             cooldownVisualEndsAt = 0d;
+            SetBoostParticles(boostActive.value);
         }
     }
 
@@ -161,12 +164,32 @@ public class MP_PlayerMovement : NetworkBehaviour
 
     private void HandleBoostChanged(bool isActive)
     {
-        if (!isSpawned || !isOwner)
+        if (!isSpawned || !isClient)
+            return;
+
+        SetBoostParticles(isActive);
+        if (!isOwner)
             return;
 
         double now = Time.realtimeSinceStartupAsDouble;
         boostVisualEndsAt = isActive ? now + SpeedBoostDuration : 0d;
         cooldownVisualEndsAt = isActive ? 0d : now + SpeedBoostCooldown;
+    }
+
+    private void SetBoostParticles(bool isActive)
+    {
+        if (boostParticles == null)
+            return;
+
+        if (isActive)
+        {
+            if (!boostParticles.isPlaying)
+                boostParticles.Play();
+        }
+        else
+        {
+            boostParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
     }
 
     private void FixedUpdate()
@@ -364,6 +387,7 @@ public class MP_PlayerMovement : NetworkBehaviour
         }
         else
         {
+            SetBoostParticles(false);
             boostVisualEndsAt = 0d;
             cooldownVisualEndsAt = 0d;
             presentationInitialized = false;
