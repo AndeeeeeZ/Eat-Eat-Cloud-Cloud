@@ -143,7 +143,8 @@ public class MP_LeaderboardUI : MonoBehaviour
             if (entries[i].ObjectId != displayedPlayer.objectId)
                 continue;
 
-            localPlayerRankText.text = $"{prefix}: #{i + 1} / {entries.Count} Lvl. {entries[i].Level:D2}";
+            string rankLabel = $"{prefix}: #{i + 1} / {entries.Count}";
+            localPlayerRankText.text = $"{rankLabel.PadRight(rankWidth + 2 + MP_PlayerNameRules.MaxLength)}  Lvl. {entries[i].Level:D2}";
             break;
         }
     }
