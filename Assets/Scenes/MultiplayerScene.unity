@@ -9378,10 +9378,10 @@ MonoBehaviour:
   countdownText: {fileID: 1336652525}
   activeOverlayColor: {r: 0.29411766, g: 0.29411766, b: 0.29411766, a: 0.7490196}
   cooldownOverlayColor: {r: 0.2924528, g: 0.2924528, b: 0.2924528, a: 0.75}
-  cooldownAttemptTextColor: {r: 1, g: 0.3915094, b: 0.3915094, a: 1}
+  cooldownAttemptTextColor: {r: 0.7830189, g: 0.114498034, b: 0.114498034, a: 1}
   shakeDurationSeconds: 0.35
-  shakeDistance: 3
-  shakeCyclesPerSecond: 15
+  shakeDistance: 4
+  shakeCyclesPerSecond: 20
 --- !u!222 &2118460001
 CanvasRenderer:
   m_ObjectHideFlags: 0

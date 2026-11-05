@@ -31,6 +31,7 @@ public class MP_PlayerMovement : NetworkBehaviour
     private Vector2 remoteVelocity;
     private bool presentationInitialized;
     private float predictionLeadSeconds = 0.12f;
+    private bool predictionLeadInitialized;
     private double nextPingLookupAt;
     private double lastInputAt;
     private double lastServerMovedAt;
@@ -283,8 +284,15 @@ public class MP_PlayerMovement : NetworkBehaviour
             lastInputAt = Time.timeAsDouble;
         }
 
-        predictionLeadSeconds = Mathf.MoveTowards(predictionLeadSeconds,
-            GetPredictionLeadSeconds(), Time.deltaTime * 0.25f);
+        float targetPredictionLead = GetPredictionLeadSeconds();
+        if (!predictionLeadInitialized)
+        {
+            predictionLeadSeconds = targetPredictionLead;
+            predictionLeadInitialized = ping != null && ping.PingMilliseconds.HasValue;
+        }
+        else
+            predictionLeadSeconds = Mathf.MoveTowards(predictionLeadSeconds,
+                targetPredictionLead, Time.deltaTime * 0.25f);
         if (direction.sqrMagnitude > 0f)
         {
             Vector2 target = serverPosition + direction * (speed * predictionLeadSeconds);
@@ -343,8 +351,8 @@ public class MP_PlayerMovement : NetworkBehaviour
 
         float roundTrip = ping != null && ping.PingMilliseconds.HasValue
             ? ping.PingMilliseconds.Value * 0.001f : 0.16f;
-        // Include the transform's buffered interpolation behind the server state
-        return Mathf.Clamp(roundTrip * 0.5f + 2f * Time.fixedDeltaTime, 0.08f, 0.35f);
+        // Input travel and the returning transform each add one network leg
+        return Mathf.Clamp(roundTrip + 2f * Time.fixedDeltaTime, 0.08f, 0.5f);
     }
 
     private float GetSizeSpeedMultiplier(MP_CycleTimer timer)
@@ -396,6 +404,7 @@ public class MP_PlayerMovement : NetworkBehaviour
             remoteVelocity = Vector2.zero;
             lastServerMovedAt = 0d;
             predictionLeadSeconds = 0.12f;
+            predictionLeadInitialized = false;
             for (int i = 0; i < visualChildren.Length; i++)
                 visualChildren[i].localPosition = visualLocalPositions[i];
             if (presentationTarget != null)
