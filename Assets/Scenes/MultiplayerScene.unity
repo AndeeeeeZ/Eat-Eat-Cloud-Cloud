@@ -2587,7 +2587,7 @@ MonoBehaviour:
   fadeOutDuration: 0.75
   breathPeriodSeconds: 1.5
   breathMinimumAlpha: 0.3
-  cycleMessageDuration: 4
+  cycleMessageDuration: 5
 --- !u!225 &732049403
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -7568,8 +7568,8 @@ MonoBehaviour:
   finalCycleDurationSeconds: 120
   speedMultiplierPerCycle: 1.85
   baseLevelsPerCycle: 0300000006000000090000000c0000000f000000
-  movementSpeedReductionPerLevelPercent: 3
-  maxMovementSpeedReductionPercent: 15
+  movementSpeedReductionPerLevelPercent: 5
+  maxMovementSpeedReductionPercent: 20
   foodSizeMultiplierPerCycle: 1.9
   foodExpMultiplierPerCycle: 2.1
 --- !u!4 &1689994347
@@ -9421,7 +9421,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   size: {x: 1300, y: 1000}
   showBoundaryGizmo: 1
-  boundaryLineWidth: 0.5
+  boundaryLineWidth: 1
   boundaryColor: {r: 0.19237275, g: 0.31132078, b: 0.31132078, a: 1}
   boundarySortingOrder: 100
   warningDistance: 25
