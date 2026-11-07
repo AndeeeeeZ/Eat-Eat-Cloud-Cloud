@@ -1,0 +1,275 @@
+fileFormatVersion: 2
+guid: 6d09d81efbbae7b46945609b93852c3f
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 8364757261426032564
+    second: Squister logo_0
+  - first:
+      213: -8487856039534375611
+    second: Squister logo_1
+  - first:
+      213: 6191567008865679625
+    second: Squister logo_2
+  - first:
+      213: 7820635041305399522
+    second: Squister logo_3
+  - first:
+      213: 6755926434426742591
+    second: Squister logo_4
+  - first:
+      213: -1994335227825949567
+    second: Squister logo_5
+  - first:
+      213: 5416776423461517630
+    second: Squister logo_6
+  - first:
+      213: -5603203642846783652
+    second: Squister logo_7
+  - first:
+      213: 7994704574686814592
+    second: Squister logo_8
+  - first:
+      213: -6965188400677584685
+    second: Squister logo_9
+  - first:
+      213: 4282434235563438150
+    second: Squister logo_10
+  - first:
+      213: 7445692987505854970
+    second: Squister logo_11
+  - first:
+      213: -8551366317365090705
+    second: Squister logo_12
+  - first:
+      213: 6239268608777900872
+    second: Squister logo_13
+  - first:
+      213: 589545808771805096
+    second: Squister logo_14
+  - first:
+      213: 2855697648950664835
+    second: Squister logo_15
+  - first:
+      213: -198527086662699578
+    second: Squister logo_16
+  - first:
+      213: 3616557778107436046
+    second: Squister logo_17
+  - first:
+      213: -7624246733871835476
+    second: Squister logo_18
+  - first:
+      213: -1693417582311808321
+    second: Squister logo_19
+  - first:
+      213: 2001880231383012726
+    second: Squister logo_20
+  - first:
+      213: -9040923985014722098
+    second: Squister logo_21
+  - first:
+      213: -958410417590187621
+    second: Squister logo_22
+  - first:
+      213: 6339738357151752832
+    second: Squister logo_23
+  - first:
+      213: 3481212993202629911
+    second: Squister logo_24
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Squister logo_0
+      rect:
+        serializedVersion: 2
+        x: 556
+        y: 650
+        width: 2158
+        height: 861
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4bffaaf2966951470800000000000000
+      internalID: 8364757261426032564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Squister logo_1
+      rect:
+        serializedVersion: 2
+        x: 563
+        y: 642
+        width: 973
+        height: 851
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54d46e217e3153a80800000000000000
+      internalID: -8487856039534375611
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 6c63fb79b7cf1c94d871e991b26fce6e
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Squister logo_0: 8364757261426032564
+      Squister logo_1: -8487856039534375611
+      Squister logo_10: 4282434235563438150
+      Squister logo_11: 7445692987505854970
+      Squister logo_12: -8551366317365090705
+      Squister logo_13: 6239268608777900872
+      Squister logo_14: 589545808771805096
+      Squister logo_15: 2855697648950664835
+      Squister logo_16: -198527086662699578
+      Squister logo_17: 3616557778107436046
+      Squister logo_18: -7624246733871835476
+      Squister logo_19: -1693417582311808321
+      Squister logo_2: 6191567008865679625
+      Squister logo_20: 2001880231383012726
+      Squister logo_21: -9040923985014722098
+      Squister logo_22: -958410417590187621
+      Squister logo_23: 6339738357151752832
+      Squister logo_24: 3481212993202629911
+      Squister logo_25: 560318081
+      Squister logo_3: 7820635041305399522
+      Squister logo_4: 6755926434426742591
+      Squister logo_5: -1994335227825949567
+      Squister logo_6: 5416776423461517630
+      Squister logo_7: -5603203642846783652
+      Squister logo_8: 7994704574686814592
+      Squister logo_9: -6965188400677584685
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
