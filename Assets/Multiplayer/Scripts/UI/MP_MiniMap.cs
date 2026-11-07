@@ -93,15 +93,18 @@ public class MP_MiniMap : MonoBehaviour
 
         Vector2 worldPosition = displayedMovement != null
             ? displayedMovement.PresentationPosition : (Vector2)player.transform.position;
-        Vector2 normalized = worldPosition - boundary.Center;
-        Vector2 size = boundary.Size;
-        normalized.x = Mathf.Clamp01(normalized.x / size.x + 0.5f);
-        normalized.y = Mathf.Clamp01(normalized.y / size.y + 0.5f);
-
         RectTransform mapRect = mapImage.rectTransform;
-        playerIndicatorRoot.anchoredPosition = new Vector2(
-            (normalized.x - 0.5f) * mapRect.rect.width,
-            (normalized.y - 0.5f) * mapRect.rect.height);
+        Vector2 halfSize = boundary.Size * 0.5f;
+        Vector2 offset = worldPosition - boundary.Center;
+        offset.x = Mathf.Clamp(offset.x, -halfSize.x, halfSize.x);
+        offset.y = Mathf.Clamp(offset.y, -halfSize.y, halfSize.y);
+        playerIndicatorRoot.anchoredPosition = offset * GetMapScale(mapRect, boundary);
+    }
+
+    private static float GetMapScale(RectTransform mapRect, MP_GameBoundary boundary)
+    {
+        return Mathf.Min(mapRect.rect.width / boundary.Size.x,
+            mapRect.rect.height / boundary.Size.y);
     }
 
     private void UpdateEventZones(MP_GameBoundary boundary)
@@ -159,13 +162,8 @@ public class MP_MiniMap : MonoBehaviour
             RectTransform mapRect = mapImage.rectTransform;
             RectTransform markerRect = indicator.rectTransform;
             Vector2 offset = zone.Center - boundary.Center;
-            Vector2 position = new Vector2(
-                offset.x / boundary.Size.x * mapRect.rect.width,
-                offset.y / boundary.Size.y * mapRect.rect.height);
-            // Keep the marker circular when the map and world aspect ratios differ
-            float mapUnitsPerWorldUnit = Mathf.Min(
-                mapRect.rect.width / boundary.Size.x,
-                mapRect.rect.height / boundary.Size.y);
+            float mapUnitsPerWorldUnit = GetMapScale(mapRect, boundary);
+            Vector2 position = offset * mapUnitsPerWorldUnit;
             float diameter = Mathf.Max(minimumEventZoneDiameter,
                 2f * zone.Radius * mapUnitsPerWorldUnit);
             Vector2 markerSize = Vector2.one * diameter;
