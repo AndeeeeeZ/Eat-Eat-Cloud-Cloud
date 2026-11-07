@@ -15,12 +15,12 @@ public static class MP_PlayerNameRules
         }
         if (input.Length > 64)
         {
-            reason = "Name is too long. Use 16 characters or fewer.";
+            reason = "Name is too long. \nUse 16 characters or fewer.";
             return false;
         }
         if (MP_PlayerBlockedTerms.ContainsIn(input))
         {
-            reason = "Name contains an inappropriate word. Please choose another.";
+            reason = "Name contains an inappropriate word. \nPlease choose another.";
             return false;
         }
 
@@ -39,7 +39,7 @@ public static class MP_PlayerNameRules
             bool digit = character >= '0' && character <= '9';
             if (!letter && !digit && character != '_' && character != '-')
             {
-                reason = "Use only letters A-Z, numbers, spaces, _ and -.";
+                reason = "Use only letters A-Z, numbers, \nspaces, _ and -.";
                 return false;
             }
 
@@ -52,7 +52,7 @@ public static class MP_PlayerNameRules
             builder.Append(character);
             if (builder.Length > MaxLength)
             {
-                reason = "Name is too long. Use 16 characters or fewer.";
+                reason = "Name is too long. \nUse 16 characters or fewer.";
                 return false;
             }
         }
