@@ -1564,7 +1564,7 @@ public class MP_FoodSpawner : NetworkBehaviour
                 continue;
             }
 
-            if (TrySpawnInRegion(boundary, regionIndex, ref regionChecksRemaining))
+            if (TrySpawnInRegion(boundary, regionIndex, false, ref regionChecksRemaining))
             {
                 region.InitialRemaining--;
                 EnqueueInitialRegion(regionIndex);
@@ -1590,21 +1590,26 @@ public class MP_FoodSpawner : NetworkBehaviour
         ref int regionChecksRemaining)
     {
         int bucketLimit = Mathf.Min(indexedMaxFoodPerGrid, regionsByFoodCount.Count);
-        for (int foodCount = 0;
-             foodCount < bucketLimit && regionChecksRemaining > 0; foodCount++)
-            if (TrySpawnFromBucket(boundary, regionsByFoodCount[foodCount], sourceRegion,
-                    ref regionChecksRemaining))
-                return true;
+        for (int neighborPass = 0; neighborPass < 2 && regionChecksRemaining > 0;
+             neighborPass++)
+            for (int foodCount = 0;
+                 foodCount < bucketLimit && regionChecksRemaining > 0; foodCount++)
+                if (TrySpawnFromBucket(boundary, regionsByFoodCount[foodCount],
+                        sourceRegion, neighborPass == 1, ref regionChecksRemaining))
+                    return true;
 
         return false;
     }
 
     private bool TrySpawnFromBucket(MP_GameBoundary boundary, List<int> candidates,
-        int sourceRegion, ref int regionChecksRemaining)
+        int sourceRegion, bool searchNeighboringRegions, ref int regionChecksRemaining)
     {
         if (candidates.Count == 0)
             return false;
 
+        int regionColumns = (activeColumns + activeGroupSize - 1) / activeGroupSize;
+        int sourceColumn = sourceRegion % regionColumns;
+        int sourceRow = sourceRegion / regionColumns;
         int start = UnityEngine.Random.Range(0, candidates.Count);
         for (int i = 0; i < candidates.Count && regionChecksRemaining > 0; i++)
         {
@@ -1612,7 +1617,15 @@ public class MP_FoodSpawner : NetworkBehaviour
             if (regionIndex == sourceRegion)
                 continue;
 
-            if (TrySpawnInRegion(boundary, regionIndex, ref regionChecksRemaining))
+            int column = regionIndex % regionColumns;
+            int row = regionIndex / regionColumns;
+            bool isNeighboring = Mathf.Abs(column - sourceColumn) <= 1 &&
+                Mathf.Abs(row - sourceRow) <= 1;
+            if (isNeighboring != searchNeighboringRegions)
+                continue;
+
+            if (TrySpawnInRegion(boundary, regionIndex, true,
+                    ref regionChecksRemaining))
             {
                 SpawnRegion region = spawnRegions[regionIndex];
                 region.InitialRemaining = Mathf.Max(0, region.InitialRemaining - 1);
@@ -1624,7 +1637,7 @@ public class MP_FoodSpawner : NetworkBehaviour
     }
 
     private bool TrySpawnInRegion(MP_GameBoundary boundary, int regionIndex,
-        ref int regionChecksRemaining)
+        bool requireOutsidePlayerViews, ref int regionChecksRemaining)
     {
         if (foodPrefab == null || regionChecksRemaining <= 0)
             return false;
@@ -1650,6 +1663,7 @@ public class MP_FoodSpawner : NetworkBehaviour
             );
 
             if (IsInOccupiedPlayerCell(position) ||
+                (requireOutsidePlayerViews && !IsOutsideAllPlayerViews(position, radius)) ||
                 !IsClear(position, radius, boundary))
                 continue;
 

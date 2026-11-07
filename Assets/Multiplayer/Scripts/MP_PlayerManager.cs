@@ -436,6 +436,14 @@ public class MP_PlayerManager : NetworkBehaviour
 
         MP_ResultsSceneData.Set(winnerName, podium);
         localPlayerData?.RememberSelection();
+
+        Scene multiplayerScene = SceneManager.GetActiveScene();
+        Canvas[] sceneCanvases = FindObjectsByType<Canvas>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Canvas canvas in sceneCanvases)
+            if (canvas.gameObject.scene == multiplayerScene)
+                canvas.enabled = false;
+
         StartCoroutine(LoadResultsAfterEating(sceneName));
     }
 
