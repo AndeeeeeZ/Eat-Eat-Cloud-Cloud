@@ -297,6 +297,8 @@ public class MP_EnemyAI : NetworkBehaviour
 
             fleeWallTarget = null;
             fleeWallDirection = Vector2.zero;
+            if (offset.sqrMagnitude > 0.0001f)
+                movement.TryActivateSpeedBoostForAI();
             return SmoothDirection(offset.normalized);
         }
 
