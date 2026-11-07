@@ -134,7 +134,6 @@ public class MP_PlayerManager : NetworkBehaviour
     private readonly SyncVar<int> aiPlayerCount = new(0);
     public int PlayerCount => playerCount.value;
     public int AIPlayerCount => aiPlayerCount.value;
-    public int HumanPlayerCount => playerCount.value - aiPlayerCount.value;
 
     private void Awake()
     {
@@ -288,7 +287,7 @@ public class MP_PlayerManager : NetworkBehaviour
             return;
 
         MP_CycleTimer timer = MP_CycleTimer.Instance;
-        if (timer == null || timer.CurrentCycle <= 1)
+        if (timer == null || timer.IsJoiningOpen)
             return;
 
         MP_PlayerStats stats = players[0];

@@ -92,17 +92,6 @@ public class MP_TopMessage : MonoBehaviour
             messageCoroutine = StartCoroutine(ShowQueuedMessages());
     }
 
-    public void FadeIn()
-    {
-        if (!isActiveAndEnabled || messageGroup == null)
-            return;
-
-        StopAnimation();
-        pendingMessages.Clear();
-        currentMessage = null;
-        messageCoroutine = StartCoroutine(FadeAndResume(1f, fadeInDuration));
-    }
-
     public void FadeOut()
     {
         if (!isActiveAndEnabled || messageGroup == null)

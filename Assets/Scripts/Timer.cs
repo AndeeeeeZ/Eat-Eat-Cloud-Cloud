@@ -43,12 +43,4 @@ public class Timer : MonoBehaviour
         timerText.text = "00:00";
         OnTimerEnded?.Invoke(); 
     }
-
-    public void PauseTimer() => isRunning = false;
-    public void ResumeTimer() => isRunning = true;
-    public void ResetTimer()
-    {
-        currentTime = totalTime;
-        isRunning = true;
-    }
 }

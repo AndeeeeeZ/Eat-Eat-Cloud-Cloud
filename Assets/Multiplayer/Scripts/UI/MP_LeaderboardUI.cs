@@ -23,17 +23,6 @@ public class MP_LeaderboardUI : MonoBehaviour
     private int highlightedRowStart = -1;
     private int highlightedRowLength;
 
-    public void SetTopPlayersToShow(int count)
-    {
-        int clampedCount = Mathf.Max(1, count);
-        if (topPlayersToShow == clampedCount)
-            return;
-
-        topPlayersToShow = clampedCount;
-        if (isActiveAndEnabled)
-            Refresh();
-    }
-
     private void OnEnable()
     {
         if (leaderboard == null || topPlayersText == null || localPlayerRankText == null)

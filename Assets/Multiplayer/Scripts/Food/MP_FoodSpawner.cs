@@ -241,7 +241,6 @@ public class MP_FoodSpawner : NetworkBehaviour
     private readonly float[] nearbyFoodDistanceSquared = new float[NearbyFoodCount];
 
     public static MP_FoodSpawner Instance { get; private set; }
-    public int ActiveFoodCount => foodRecords.Count;
     public IReadOnlyList<MP_FoodEventZone> ActiveEventZones => isSpawned
         ? activeEventZones.value : Array.Empty<MP_FoodEventZone>();
     public bool IsReadyForPlayers => isServer && isSpawned && foodRecordIdsByCell != null;

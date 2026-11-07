@@ -11,7 +11,6 @@ public class MP_GameBoundary : MonoBehaviour
     [SerializeField, Min(0.01f)] private float fadeDistance = 10f;
     [SerializeField, Min(0.01f)] private float pulseDuration = 1.5f;
 
-    private bool showBoundaryInGame = true;
     private SpriteRenderer[] boundaryLines;
     private Sprite boundarySprite;
     private Texture2D boundaryTexture;
@@ -67,12 +66,6 @@ public class MP_GameBoundary : MonoBehaviour
             UpdateBoundaryLines();
             UpdateBoundaryVisibility();
         }
-    }
-
-    public void SetInGameBoundaryVisible(bool visible)
-    {
-        showBoundaryInGame = visible;
-        UpdateBoundaryVisibility();
     }
 
     private void CreateBoundaryLines()
@@ -137,7 +130,7 @@ public class MP_GameBoundary : MonoBehaviour
             trackedMovement = player != null ? player.GetComponent<MP_PlayerMovement>() : null;
         }
 
-        if (showBoundaryInGame && Size.x > 0f && Size.y > 0f && player != null)
+        if (Size.x > 0f && Size.y > 0f && player != null)
         {
             Vector2 position = trackedMovement != null
                 ? trackedMovement.PresentationPosition : (Vector2)player.transform.position;
