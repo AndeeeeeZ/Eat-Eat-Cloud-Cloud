@@ -12,6 +12,7 @@ public class MP_CameraController : MonoBehaviour
     private float normalScale;
     private float targetScale;
     private MP_LocalPlayerManager localPlayerManager;
+    private bool holdingResultsView;
 
     private void Awake()
     {
@@ -51,6 +52,9 @@ public class MP_CameraController : MonoBehaviour
 
     public void SetTarget(Transform target)
     {
+        if (holdingResultsView)
+            return;
+
         if (target == null)
         {
             Debug.LogError("Target is null", this);
@@ -79,6 +83,9 @@ public class MP_CameraController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (holdingResultsView)
+            return;
+
         float currentSize = cam.Lens.OrthographicSize;
 
         float newSize = Mathf.Lerp(
@@ -90,6 +97,11 @@ public class MP_CameraController : MonoBehaviour
         var lens = cam.Lens;
         lens.OrthographicSize = newSize;
         cam.Lens = lens;
+    }
+
+    public void HoldViewForResults()
+    {
+        holdingResultsView = true;
     }
 
     public void RemoveTarget()

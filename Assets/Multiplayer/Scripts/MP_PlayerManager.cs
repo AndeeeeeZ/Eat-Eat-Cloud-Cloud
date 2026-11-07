@@ -436,6 +436,8 @@ public class MP_PlayerManager : NetworkBehaviour
         MP_ResultsSceneData.Set(winnerName, podium);
         localPlayerData?.RememberSelection();
 
+        FindFirstObjectByType<MP_CameraController>()?.HoldViewForResults();
+
         Scene multiplayerScene = SceneManager.GetActiveScene();
         Canvas[] sceneCanvases = FindObjectsByType<Canvas>(
             FindObjectsInactive.Include, FindObjectsSortMode.None);

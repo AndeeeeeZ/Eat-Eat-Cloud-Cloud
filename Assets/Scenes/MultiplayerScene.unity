@@ -1651,8 +1651,8 @@ MonoBehaviour:
   _networkRules: {fileID: 0}
   _visitiblityRules: {fileID: 0}
   enemyPrefab: {fileID: -6452352967253541942, guid: 93c4afe46e7bea347ad29d8acb25f7b2, type: 3}
-  initialEnemySpawns: 4
-  totalEnemySpawns: 9
+  initialEnemySpawns: 6
+  totalEnemySpawns: 13
   spawnIntervalSeconds: 3
   retryInterval: 1
 --- !u!4 &385144706
@@ -4403,7 +4403,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -28.35}
+  m_AnchoredPosition: {x: 0, y: -28.350006}
   m_SizeDelta: {x: 168.02, y: 56.7}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1173072630
