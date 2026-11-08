@@ -4403,7 +4403,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -28.350006}
+  m_AnchoredPosition: {x: 0, y: -28.349976}
   m_SizeDelta: {x: 175, y: 56.7}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1173072630
@@ -9230,7 +9230,7 @@ MonoBehaviour:
   _startClientFlags: 6
   _cookieScope: 1
   _dontDestroyOnLoad: 0
-  _transport: {fileID: 2083505734}
+  _transport: {fileID: 2083505735}
   _networkPrefabs: {fileID: 11400000, guid: 581cd877c45722841b015b37e9517330, type: 2}
   _networkAssets: {fileID: 0}
   _networkRules: {fileID: 11400000, guid: d8799083b96579a42b8b2d03e4ceae98, type: 2}
@@ -9277,7 +9277,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2083505729}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: de4778b5edf2476448bcb3ac3d9c35d5, type: 3}
   m_Name: 
@@ -9302,7 +9302,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2083505729}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fc64ff707d914a64e95f2ac0bf554c09, type: 3}
   m_Name: 
